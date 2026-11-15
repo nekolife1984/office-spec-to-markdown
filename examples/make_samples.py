@@ -105,6 +105,13 @@ def make_xlsx(out_dir, png):
     for i, r in enumerate(rows, start=5):
         for j, v in enumerate(r, start=2):
             ws.cell(row=i, column=j, value=v)
+    # font decoration samples: bold header, bold cell, strike, red text
+    from openpyxl.styles import Font
+    for j in range(2, 6):
+        ws.cell(row=4, column=j).font = Font(bold=True)
+    ws.cell(row=5, column=3).font = Font(bold=True)               # ユーザーID
+    ws.cell(row=6, column=5).font = Font(strike=True)             # 8文字以上
+    ws.cell(row=5, column=4).font = Font(color="FFFF0000")        # ○ (red)
     ws["C5"].comment = Comment("入力チェックはサーバー側でも実施", "spec")
     ws.add_image(XLImage(str(png)), "B8")
     ws2 = wb.create_sheet("コード表")
@@ -140,8 +147,12 @@ def make_pdf(out_dir, png):
     for i, row in enumerate(data):
         for j, v in enumerate(row):
             page.insert_text((x0 + j * cw + 6, y0 + i * ch + 18), v, fontsize=11)
+    page.insert_text((56, 160), "Important: passwords must be hashed.",
+                     fontsize=11, fontname="hebo")
     page.insert_text((56, 300), "Figure 1: screen transition image", fontsize=11)
     page.insert_image(fitz.Rect(56, 320, 376, 520), filename=str(png))
+    page.insert_text((56, 545), "Note: this caption is italic.",
+                     fontsize=10, fontname="heit")
     page2 = doc.new_page(width=595, height=842)
     page2.insert_text((56, 72), "Notes", fontsize=14)
     page2.insert_text((56, 110), "Second page: plain text only.", fontsize=11)

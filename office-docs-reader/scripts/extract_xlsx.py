@@ -85,6 +85,79 @@ def extract_comments(zf, comments_path):
     return out
 
 
+def _wrap_md(text, bold=False, italic=False, strike=False, underline=False):
+    """Wrap one text run with Markdown decoration for the given font flags."""
+    if not text.strip():
+        return text
+    if strike:
+        text = f"~~{text}~~"
+    if underline:
+        text = f"<u>{text}</u>"
+    if italic:
+        text = f"*{text}*"
+    if bold:
+        text = f"**{text}**"
+    return text
+
+
+def _is_colored(font):
+    color = getattr(font, "color", None)
+    if color is None or getattr(color, "type", None) != "rgb":
+        return False
+    rgb = str(getattr(color, "rgb", "") or "")
+    return rgb not in ("", "FF000000")
+
+
+def cell_md(cell, counts):
+    """Cell value as Markdown, carrying font decoration.
+
+    Bold/italic/strike/underline become Markdown (or <u>); font colour
+    cannot be represented in Markdown, so coloured runs are only counted
+    in the inventory (counts["colored"]) for the restructuring step to
+    make their meaning explicit. Rich-text runs are decorated per run.
+    """
+    from openpyxl.cell.rich_text import CellRichText, TextBlock
+    v = cell.value
+    if v is None:
+        return ""
+    if isinstance(v, CellRichText):
+        parts = []
+        for block in v:
+            if isinstance(block, TextBlock):
+                if not block.text.strip():
+                    parts.append(esc(block.text))
+                    continue
+                f = block.font
+                b = bool(f and f.b)
+                i = bool(f and f.i)
+                st = bool(f and f.strike)
+                u = bool(f and f.u)
+                if b: counts["bold"] += 1
+                if i: counts["italic"] += 1
+                if st: counts["strike"] += 1
+                if u: counts["underline"] += 1
+                if f and _is_colored(f): counts["colored"] += 1
+                parts.append(_wrap_md(esc(block.text), b, i, st, u))
+            else:
+                parts.append(esc(str(block)))
+        return "".join(parts)
+    if isinstance(v, str):
+        if not v.strip():
+            return ""
+        f = cell.font
+        b = bool(f and f.b)
+        i = bool(f and f.i)
+        st = bool(f and f.strike)
+        u = bool(f and f.u)
+        if b: counts["bold"] += 1
+        if i: counts["italic"] += 1
+        if st: counts["strike"] += 1
+        if u: counts["underline"] += 1
+        if f and _is_colored(f): counts["colored"] += 1
+        return _wrap_md(esc(v), b, i, st, u)
+    return esc(v)
+
+
 def convert_xlsx(src, out):
     try:
         from openpyxl import load_workbook
@@ -110,7 +183,10 @@ def convert_xlsx(src, out):
                 (media_dir / Path(n).name).write_bytes(data)
                 media_bytes[hashlib.sha256(data).hexdigest()] = Path(n).name
 
-        wb = load_workbook(src, data_only=True)
+        try:
+            wb = load_workbook(src, data_only=True, rich_text=True)
+        except TypeError:
+            wb = load_workbook(src, data_only=True)
         # map sheet name -> sheet xml path, in workbook order
         wb_rels = {}
         try:
@@ -141,9 +217,11 @@ def convert_xlsx(src, out):
             rels = parse_sheet_rels(zf, sheet_paths.get(ws.title, "")) if ws.title in sheet_paths else {}
 
             # --- cells -> markdown table (trailing empty rows/cols trimmed)
+            styled = {"bold": 0, "italic": 0, "strike": 0, "underline": 0, "colored": 0}
             grid = []
             for row in ws.iter_rows():
-                grid.append(["" if c.value is None else esc(c.value) for c in row])
+                grid.append([cell_md(c, styled) for c in row])
+            s_inv["styled_cells"] = styled
             while grid and all(v == "" for v in grid[-1]):
                 grid.pop()
             width = 0
@@ -202,6 +280,11 @@ def convert_xlsx(src, out):
             s_inv["images"] = len(sheet_images)
             inv["sheets"].append(s_inv)
 
+        colored_total = sum(s.get("styled_cells", {}).get("colored", 0) for s in inv["sheets"])
+        if colored_total:
+            warnings.append(f"{colored_total} cell(s) use font colour, which Markdown cannot "
+                            "represent. They are counted per sheet in styled_cells; make the "
+                            "meaning explicit (a note or a status column) when restructuring.")
         inv["media_files"] = len(media_files)
         inv["charts"] = len(chart_files)
         if chart_files:

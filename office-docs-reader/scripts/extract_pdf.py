@@ -63,18 +63,56 @@ def extract_pdf(src, out):
         p_inv["tables"] = len(table_rects)
 
         # --- text blocks outside tables, reading order (top-to-bottom, then x)
+        # Span-level extraction carries font decoration: bold/italic runs
+        # become Markdown; coloured runs are counted (Markdown has no
+        # colour) so the restructuring step can make their meaning explicit.
+        styled = {"bold": 0, "italic": 0, "colored": 0}
         blocks = []
-        for b in page.get_text("blocks"):
-            x0, y0, x1, y1, text, *_ = b
-            text = text.strip()
-            if not text:
+        for block in page.get_text("dict")["blocks"]:
+            if block.get("type") != 0:
                 continue
+            x0, y0, x1, y1 = block["bbox"]
             center = fitz.Point((x0 + x1) / 2, (y0 + y1) / 2)
             if any(center in r for r in table_rects):
                 continue
-            blocks.append((round(y0 / 10), x0, text))
+            lines_md = []
+            plain_len = 0
+            for line in block["lines"]:
+                runs = []  # (bold, italic, text) with adjacent same-style spans merged
+                for span in line["spans"]:
+                    text = span["text"]
+                    if not text:
+                        continue
+                    plain_len += len(text)
+                    fname = span.get("font", "").lower()
+                    bold = bool(span.get("flags", 0) & 16) or "bold" in fname
+                    italic = bool(span.get("flags", 0) & 2) or "italic" in fname or "oblique" in fname
+                    if text.strip():
+                        if bold: styled["bold"] += 1
+                        if italic: styled["italic"] += 1
+                        if span.get("color", 0) not in (0, None): styled["colored"] += 1
+                    if runs and runs[-1][0] == bold and runs[-1][1] == italic:
+                        runs[-1] = (bold, italic, runs[-1][2] + text)
+                    else:
+                        runs.append((bold, italic, text))
+                line_md = ""
+                for bold, italic, text in runs:
+                    t = text
+                    if t.strip():
+                        if italic: t = f"*{t}*"
+                        if bold: t = f"**{t}**"
+                    line_md += t
+                if line_md.strip():
+                    lines_md.append(line_md.strip())
+            if lines_md:
+                blocks.append((round(y0 / 10), x0, "\n".join(lines_md)))
         blocks.sort()
         p_inv["text_chars"] = sum(len(t) for _, _, t in blocks)
+        p_inv["styled_spans"] = styled
+        if styled["colored"]:
+            warnings.append(f"Page {page_no} has {styled['colored']} coloured text run(s), "
+                            "which Markdown cannot represent. Make their meaning explicit "
+                            "when restructuring.")
 
         # --- images
         page_images = []
