@@ -25,7 +25,7 @@ search, summarization) without any conversion. So:
    and flagged.
 2. **office-to-markdown** consumes that extraction and restructures it
    under `references/conversion-rules.md` (Excel sheet-type
-   classification, Mermaid vs. PNG decisions, making colour/grey-out
+   classification, drawio.svg vs. PNG decisions for figures, making colour/grey-out
    meaning explicit, …), then reconciles the result with the inventory
    via `scripts/verify.py`.
 
@@ -39,6 +39,7 @@ office-docs-reader/
 office-to-markdown/
   SKILL.md
   scripts/verify.py                 link/count verification against inventory.json
+  scripts/make_drawio_svg.py        build editable .drawio.svg figures from a JSON diagram spec
   references/conversion-rules.md    detailed Word/Excel conversion rules
   templates/convert-spec.prompt.md  GitHub Copilot prompt file (.github/prompts/)
 examples/

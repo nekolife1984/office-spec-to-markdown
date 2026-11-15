@@ -13,8 +13,9 @@ this workspace) into Markdown, using the two skills in sequence:
    according to its `references/conversion-rules.md`. In particular:
    - absorb shape, text-box and comment text into the sections they belong to
    - classify each Excel sheet by type before converting it
-   - redraw simple diagrams as Mermaid and keep complex figures as PNG
-     references with a text description
+   - rebuild figures as editable .drawio.svg (diagrams.net) by default;
+     keep difficult figures (photos, screenshots, dense diagrams, data
+     charts) as PNG references with a text description
    - never drop table rows, shape texts or comments silently
 3. Run `python3 <converter-skill-path>/scripts/verify.py <output-dir>` and reconcile
    the counts with inventory.json.

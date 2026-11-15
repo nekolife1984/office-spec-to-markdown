@@ -13,11 +13,26 @@ delivery report instead of deciding silently.
    `shapes.json` and `inventory.json`.
 2. **Counts are the contract.** Headings, tables, shape texts, comments and
    media files in the output must reconcile with `inventory.json`.
-3. **Diagrams: text when simple, image when complex.**
-   - Flow / sequence / state / ER diagrams with a handful of boxes and
-     arrows → Mermaid, with the original rendering kept as PNG next to it.
-   - Screenshots, photos, charts, dense diagrams → PNG reference plus a
-     short text description (what it shows, key values, conclusion).
+3. **Figures: drawio.svg by default, PNG when difficult.**
+   - Diagrams made of boxes, arrows and text (flowcharts, screen
+     transitions, state diagrams, configuration/architecture diagrams,
+     org charts) → rebuild as **`.drawio.svg`**: an SVG that renders in
+     Markdown and embeds the diagrams.net (draw.io) graph, so the figure
+     stays editable after conversion. For simple node/edge diagrams use
+     `scripts/make_drawio_svg.py` (JSON in, .drawio.svg out). For richer
+     diagrams, author the .drawio source and export SVG from
+     diagrams.net with the diagram embedded.
+   - Validate every rebuilt figure: the embedded graph must parse, and
+     its node/edge counts and labels must match the source figure.
+     Keep the source rendering (PNG) in the work folder until the
+     rebuild is verified.
+   - **Difficult figures stay PNG**: photos, screenshots, dense or
+     highly detailed diagrams, data charts (graphs), handwritten or
+     scanned figures — anything where redrawing risks losing or
+     inventing information. PNG reference plus a short text description
+     (what it shows, key values, conclusion).
+   - A figure that is partly simple: rebuild the structure as
+     drawio.svg and note in the description what was simplified.
 4. **Tables that GFM cannot express** (merged cells, multi-paragraph cells,
    nested tables): keep an HTML `<table>`, split into several simple
    tables, or turn the header part into a definition list plus a simple
@@ -39,7 +54,8 @@ delivery report instead of deciding silently.
 - SmartArt, text boxes, floating shapes and Excel charts embedded in Word
   are not converted by pandoc. Detect them (they appear as images or not at
   all), then: export the document to PDF, cut the region out as PNG, and
-  either describe it in text or redraw it as Mermaid.
+  either rebuild it as drawio.svg (boxes/arrows/text figures) or keep
+  it as PNG with a text description (difficult figures).
 - Tracked changes: convert the accepted state by default. Only use
   `--track-changes=all` when the user explicitly wants the change history.
 - Headers, footers, page numbers, TOC fields: drop. Regenerate a TOC from
@@ -57,7 +73,7 @@ each sheet before converting:
 | Data table (項目定義・一覧) | One Markdown table per logical table. Fill merged header cells down/right so every row knows its group. |
 | Screen / form spec (画面仕様) | Rebuild as headings + item tables. The screenshot stays as an image; item numbers in the image must match the table rows. |
 | Prose (概要・説明文) | Merge the scattered cells into paragraphs in reading order (top→bottom, left→right). Do not ship a giant sparse table. |
-| Figure-only (フロー図・構成図) | Do not force into Markdown. Reference a PDF/PNG rendering and add a Mermaid version or text walkthrough when feasible. |
+| Figure-only (フロー図・構成図) | Rebuild the figure as drawio.svg and reference it from a short Markdown section with a text walkthrough. If the figure is too dense or detailed to rebuild faithfully, reference a PNG rendering instead and say why. |
 | Cover / history (表紙・改訂履歴) | Cover → title + metadata list. History → a simple table. |
 
 Mechanics:
@@ -92,7 +108,7 @@ Mechanics:
 - [ ] Shape texts in output = shapes with text in `inventory.json`
 - [ ] Comments all placed or explicitly dropped with a reason
 - [ ] Media files in `media/` all referenced; no broken image links (`verify.py`)
-- [ ] Charts / SmartArt / complex diagrams: PNG + description present
+- [ ] Figures: rebuilt as drawio.svg (embedded graph parses, node/edge counts and labels match the source) or, for difficult ones, PNG + description present
 - [ ] Cross-references (図・表・項番) all resolve
 - [ ] Delivery report lists: what was dropped (layout, colours, headers),
       what stayed as image/PDF, and every judgement call

@@ -9,7 +9,8 @@ description: Convert Word (.docx) and Excel (.xlsx) documents — especially spe
 
 Turn an Office document into Markdown that a human would be happy to
 maintain in Git: real heading hierarchy, clean tables, figures as
-referenced files, diagrams as Mermaid where sensible.
+referenced files, and figures rebuilt as editable drawio.svg
+(diagrams that are too difficult to rebuild faithfully stay PNG).
 
 Conversion is **restructuring**, not extraction. Extraction is the
 **office-docs-reader** skill's job; this skill starts from its output.
@@ -43,9 +44,20 @@ the final Markdown must reconcile with.
 - Excel: classify each sheet first (data table / screen spec / prose /
   figure-only / cover & history) — each type gets a different structure.
   See `references/conversion-rules.md`.
-- Decide per diagram: Mermaid (simple flow/sequence/state/ER) or PNG
-  reference + text description (screenshots, charts, dense diagrams).
-  Figure-only Excel sheets may stay PDF/PNG references entirely.
+- Decide per figure: **drawio.svg by default, PNG when difficult.**
+  Diagrams that consist of boxes, arrows and text (flowcharts, screen
+  transitions, state diagrams, configuration/architecture diagrams,
+  org charts) are rebuilt as editable `.drawio.svg` — an SVG with the
+  diagrams.net (draw.io) graph embedded, so it renders in Markdown and
+  stays editable in draw.io. Use `scripts/make_drawio_svg.py` for
+  simple node/edge diagrams, or author the .drawio source and export
+  SVG from diagrams.net for richer ones.
+  Figures that are difficult to rebuild faithfully — photos,
+  screenshots, dense/complex diagrams, data charts, anything where a
+  redraw would lose or invent information — stay **PNG** references
+  with a text description. When in doubt, PNG plus description beats a
+  wrong redraw. Figure-only Excel sheets may stay PNG references
+  entirely when they are difficult.
 
 ### 3. Restructure
 
@@ -59,7 +71,9 @@ the final Markdown must reconcile with.
   fill that carries meaning becomes text (`<del>`, a status column, a
   note). Decoration is dropped, once, and mentioned in the report.
 - Keep figure/table numbering and cross-references consistent with the
-  files in `media/`.
+  files in `media/`. Rebuilt figures are saved next to the Markdown as
+  `<name>.drawio.svg` and referenced like images
+  (`![図1](<name>.drawio.svg)`); verify.py checks those links too.
 - Write the final file as `<stem>.md` in the extraction directory (next
   to `extracted.md`, which stays as the audit trail).
 
@@ -72,11 +86,12 @@ python3 <skill>/scripts/verify.py <dir> [<stem>.md]
 Reconcile: headings vs. source chapters, table rows/columns, shape
 texts placed = shapes in inventory, comments all placed or explicitly
 dropped with a reason, every media file referenced, no broken links,
-charts/SmartArt present as PNG + description.
+charts/SmartArt present as drawio.svg (rebuilt) or PNG + description
+(difficult ones).
 
 ### 5. Report
 
-Tell the user: what was converted, what stayed as image/PDF and why,
+Tell the user: what was converted, what was rebuilt as drawio.svg, what stayed as PNG/PDF and why,
 what was dropped (page layout, colours, headers/footers), and every
 judgement call. A conversion without this report is not done.
 
