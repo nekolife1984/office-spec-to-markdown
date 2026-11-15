@@ -8,7 +8,10 @@ Checks:
     to compare with the source document by eye
 
 Usage:
-    python3 verify.py <output_dir>   # dir containing <stem>.md + inventory.json
+    python3 verify.py <output_dir> [markdown_file]
+    # <output_dir> holds inventory.json (from office-docs-reader) and the
+    # final Markdown. Without an explicit file, the first .md that is not
+    # the reader's extracted.md is checked.
 
 Exit code 1 when a link is broken or a media file is unreferenced.
 """
@@ -24,10 +27,13 @@ def main():
     if not inv_path.exists():
         sys.exit(f"inventory.json not found in {out}")
     inv = json.loads(inv_path.read_text(encoding="utf-8"))
-    md_files = [p for p in out.glob("*.md")]
-    if not md_files:
-        sys.exit(f"no .md file in {out}")
-    md_path = md_files[0]
+    if len(sys.argv) > 2:
+        md_path = out / sys.argv[2]
+    else:
+        md_files = [p for p in out.glob("*.md") if p.name != "extracted.md"]
+        if not md_files:
+            sys.exit(f"no final .md file in {out} (extracted.md alone is not a conversion result)")
+        md_path = md_files[0]
     md = md_path.read_text(encoding="utf-8")
 
     problems = []

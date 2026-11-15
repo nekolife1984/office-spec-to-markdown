@@ -1,20 +1,24 @@
 #!/usr/bin/env python3
-"""Convert a Word (.docx) or Excel (.xlsx) specification document to Markdown.
+"""Extract everything an AI needs to read from a Word (.docx) or Excel (.xlsx) document.
 
-Design: extract *everything* mechanically first (cells, paragraphs, tables,
-shape/text-box text, comments, images), record counts in inventory.json, and
-leave restructuring to the agent that runs this script. Nothing is silently
-dropped: anything that cannot be represented in Markdown is listed in the
-inventory and in a "not converted" section of the output.
+This is the extraction half of a two-skill pipeline (office-docs-reader ->
+office-to-markdown). It extracts *everything* mechanically (cells, paragraphs,
+tables, shape/text-box text, comments, images) and records counts in
+inventory.json. It does NOT restructure anything into final Markdown: the
+output is a faithful, position-annotated extraction for an AI to read.
+Nothing is silently dropped: anything that cannot be extracted is listed
+in the inventory warnings.
 
 Usage:
-    python3 convert.py <input.docx|input.xlsx> -o <output_dir>
+    python3 extract.py <input.docx|input.xlsx> -o <output_dir>
 
 Outputs in <output_dir>:
-    <stem>.md        assembled Markdown
+    extracted.md     faithful extraction (per-sheet tables for xlsx,
+                     paragraphs/tables for docx) with shape texts, comments
+                     and image references placed by anchor position
     inventory.json   counts and warnings (the verification baseline)
     media/           extracted images (docx / xlsx embedded pictures)
-    work/            intermediate files (cells.md, shapes.json for xlsx)
+    work/            intermediate files (shapes.json for xlsx)
 
 Dependencies: Python 3.10+ standard library. openpyxl (+Pillow) is used for
 .xlsx when available; .docx falls back to a stdlib extractor when pandoc is
@@ -157,7 +161,7 @@ def convert_docx(src, out):
     warnings = []
     if shutil.which("pandoc"):
         media_dir.mkdir(parents=True, exist_ok=True)
-        md_path = out / f"{stem}.md"
+        md_path = out / "extracted.md"
         subprocess.run(
             ["pandoc", str(src), "-t", "gfm", "--wrap=none",
              f"--extract-media={out}", "-o", str(md_path)],
@@ -170,7 +174,7 @@ def convert_docx(src, out):
     else:
         with zipfile.ZipFile(src) as zf:
             md, stats, w = docx_fallback(zf, src, out, media_dir)
-        (out / f"{stem}.md").write_text(md, encoding="utf-8")
+        (out / "extracted.md").write_text(md, encoding="utf-8")
         inv.update(stats)
         warnings.extend(w)
     inv["warnings"] = warnings
@@ -375,7 +379,7 @@ def convert_xlsx(src, out):
             warnings.append("Some media files could not be anchored to a sheet (e.g. in-cell images). "
                             "They are extracted under media/; place them manually.")
         (work_dir / "shapes.json").write_text(json.dumps(all_shapes, ensure_ascii=False, indent=2), encoding="utf-8")
-        (out / f"{stem}.md").write_text("\n".join(md_parts) + "\n", encoding="utf-8")
+        (out / "extracted.md").write_text("\n".join(md_parts) + "\n", encoding="utf-8")
     inv["warnings"] = warnings
     return inv
 
@@ -401,7 +405,7 @@ def main():
         sys.exit(f"Unsupported file type: {suffix}")
     (out / "inventory.json").write_text(json.dumps(inv, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(inv, ensure_ascii=False, indent=2))
-    print(f"\nMarkdown: {out / (src.stem + '.md')}")
+    print(f"\nExtracted text: {out / 'extracted.md'}")
     print(f"Inventory: {out / 'inventory.json'}")
 
 

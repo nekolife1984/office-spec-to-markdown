@@ -1,14 +1,16 @@
 # Conversion rules — Word / Excel仕様書 → Markdown
 
-Detailed rules referenced by SKILL.md. Apply them during the restructuring
-step. When a rule forces a judgement call, note it in the delivery report
-instead of deciding silently.
+Detailed rules for the office-to-markdown skill. Apply them during the
+restructuring step, working from the extraction produced by the
+office-docs-reader skill (`extracted.md`, `inventory.json`, `media/`,
+`work/shapes.json`). When a rule forces a judgement call, note it in the
+delivery report instead of deciding silently.
 
 ## Common rules (Word & Excel)
 
 1. **Extract first, rewrite second.** Never restructure from the binary
-   directly. Work from the extracted Markdown, `shapes.json` and
-   `inventory.json`.
+   directly. Work from office-docs-reader's extraction: `extracted.md`,
+   `shapes.json` and `inventory.json`.
 2. **Counts are the contract.** Headings, tables, shape texts, comments and
    media files in the output must reconcile with `inventory.json`.
 3. **Diagrams: text when simple, image when complex.**
@@ -64,7 +66,7 @@ Mechanics:
   cells when it expresses grouping; keep only the top-left value when it is
   a title spanning columns (then make it a heading instead).
 - **Shape / text-box / callout text** often holds real specification text.
-  Extract all of it (the converter does this from `xl/drawings/*.xml`),
+  Extract all of it (office-docs-reader does this from `xl/drawings/*.xml`),
   sort by anchor cell, and absorb each piece into the section it annotates.
   Never keep auto shape names ("正方形/長方形 15") as headings.
 - **Cell comments** are specification notes: extract and merge them into
