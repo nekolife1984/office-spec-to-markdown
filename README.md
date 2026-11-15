@@ -1,7 +1,6 @@
 # Officeスキル：Word/Excel/PDFを読んで、Markdownに変換する
 
-Word（.docx）・Excel（.xlsx）・PDFをAIが読むためのスキルと、仕様書・設計書を
-Markdown（GFM）へ変換するためのスキル、2本セットです。
+Word（.docx）・Excel（.xlsx）・PDFをAIが読むためのスキルと、仕様書・設計書をMarkdown（GFM）へ変換するためのスキル、2本セットです。
 
 「読む」ことと「変換する」ことを分けた、2つのエージェントスキルです：
 
@@ -12,23 +11,17 @@ Markdown（GFM）へ変換するためのスキル、2本セットです。
 
 ## なぜ「読む」と「変換する」を分けるのか
 
-一発変換では、仕様書で一番大事な部分が黙って落ちます：図形や吹き出しの
-中のテキスト、セルコメント、グラフ、セル結合の構造。「読む」だけの用途
-（質疑応答、検索、要約）も変換なしで役に立ちます。そこで：
+一発変換では、仕様書で一番大事な部分が黙って落ちます：図形や吹き出しの中のテキスト、セルコメント、グラフ、セル結合の構造。
+「読む」だけの用途（質疑応答、検索、要約）も変換なしで役に立ちます。
+そこで：
 
-1. **office-docs-reader** が機械的に、忠実に抽出します——
-   `scripts/extract.py` が `extracted.md`、`inventory.json`、`media/`、
-   `work/shapes.json` を生成。再構成はせず、黙って落とすこともなし。
+1. **office-docs-reader** が機械的に、忠実に抽出します——`scripts/extract.py` が `extracted.md`、`inventory.json`、`media/`、`work/shapes.json` を生成。
+   再構成はせず、黙って落とすこともなし。
    抽出できないもの（グラフ、SmartArt）は個数を数えて警告に記録します。
-2. **office-to-markdown** がその抽出物を受け取り、
-   `references/conversion-rules.md` に従って再構成します（Excelのシート
-   種別分類、図のdrawio.svg化かPNGかの判断、色・グレーアウトの意味の
-   明示化など）。その後、`scripts/verify.py` で棚卸しと照合します。
+2. **office-to-markdown** がその抽出物を受け取り、`references/conversion-rules.md` に従って再構成します（Excelのシート種別分類、図のdrawio.svg化かPNGかの判断、色・グレーアウトの意味の明示化など）。
+   その後、`scripts/verify.py` で棚卸しと照合します。
 
-図の変換方針：箱・矢印・テキストの図は編集可能な **drawio.svg**
-（diagrams.net埋め込みSVG）に描き直すのが既定で、写真・スクリーン
-ショット・高密度な図・データのグラフなど難しいものは **PNG** のままに
-します。
+図の変換方針：箱・矢印・テキストの図は編集可能な **drawio.svg**（diagrams.net埋め込みSVG）に描き直すのが既定で、写真・スクリーンショット・高密度な図・データのグラフなど難しいものは **PNG** のままにします。
 
 ## 構成
 
@@ -74,14 +67,9 @@ python3 office-to-markdown/scripts/verify.py out/ spec.md
 
 ## エージェントでの使い方
 
-- **Agent Skills対応エージェント**（VS CodeのGitHub Copilot、Claude
-  Code、Codexなど）：2つのスキルフォルダをスキル用ディレクトリにコピー
-  するか、ワークスペースから参照してください。片方だけでも使えます
-  （変換しないならreaderだけ入れる）。
-- **GitHub Copilot用プロンプトファイル**：
-  `office-to-markdown/templates/convert-spec.prompt.md` をリポジトリの
-  `.github/prompts/convert-spec.prompt.md` にコピーし、Copilot Chat
-  （エージェントモード）で `/convert-spec` を実行してください。
+- **Agent Skills対応エージェント**（VS CodeのGitHub Copilot、Claude Code、Codexなど）：2つのスキルフォルダをスキル用ディレクトリにコピーするか、ワークスペースから参照してください。
+  片方だけでも使えます（変換しないならreaderだけ入れる）。
+- **GitHub Copilot用プロンプトファイル**：`office-to-markdown/templates/convert-spec.prompt.md` をリポジトリの`.github/prompts/convert-spec.prompt.md` にコピーし、Copilot Chat（エージェントモード）で `/convert-spec` を実行してください。
   2スキルを順に駆動します。
 
 ## テスト
