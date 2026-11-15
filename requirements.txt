@@ -1,0 +1,20 @@
+# このリポジトリ全体の依存パッケージ
+# インストール: pip install -r requirements.txt
+#
+# 前提: Python 3.10以上
+# 注意: pandoc は pip では入らない外部コマンド（任意。.docx変換の主ルート）。
+#   Windows: winget install Pandoc.Pandoc / Mac: brew install pandoc
+
+# --- スキル本体（office-docs-reader の抽出スクリプト） ---
+-r office-docs-reader/requirements.txt
+
+# office-to-markdown のスクリプト（verify.py / make_drawio_svg.py）は
+# 標準ライブラリのみで動作するため、追加パッケージは不要。
+
+# --- サンプル生成（examples/make_samples.py）用 ---
+# テスト用サンプル .docx の生成に使用（スキル本体の実行には不要）
+python-docx>=1.1
+
+# --- 任意（スキル本体では未使用） ---
+# セルだけの一次変換を MarkItDown でも試したい場合のみ:
+# markitdown[xlsx]

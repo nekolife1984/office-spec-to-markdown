@@ -19,7 +19,10 @@ description: Word（.docx）とExcel（.xlsx）をAIが分析するために完�
 
 ### 1. 抽出する
 
+依存パッケージ（.xlsx用：openpyxl / Pillow）を先に入れる：
+
 ```bash
+pip install -r <skill>/requirements.txt
 python3 <skill>/scripts/extract.py <file.docx|file.xlsx> -o <out_dir>
 ```
 

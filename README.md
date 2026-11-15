@@ -33,8 +33,10 @@ Markdown（GFM）へ変換するためのスキル、2本セットです。
 ## 構成
 
 ```
+requirements.txt                    リポジトリ全体の依存（本体＋サンプル生成用）
 office-docs-reader/
   SKILL.md
+  requirements.txt                  抽出スクリプトの依存（openpyxl / Pillow）
   scripts/extract.py                .docx/.xlsx → extracted.md + inventory.json + media/
   references/extraction-notes.md    各内容がファイル形式の内部のどこにあるか
 office-to-markdown/
@@ -50,8 +52,10 @@ examples/
 ## クイックスタート
 
 ```bash
-# 1. 読む／抽出する（docx: pandocがあれば使用、なければ標準ライブラリの予備抽出
-#    xlsx: pip install openpyxl Pillow）
+# 0. 依存パッケージを入れる（Python 3.10以上）
+pip install -r requirements.txt
+
+# 1. 読む／抽出する（docx: pandocがあれば使用、なければ標準ライブラリの予備抽出）
 python3 office-docs-reader/scripts/extract.py spec.xlsx -o out/
 # → out/extracted.md、out/inventory.json、out/media/、out/work/shapes.json
 

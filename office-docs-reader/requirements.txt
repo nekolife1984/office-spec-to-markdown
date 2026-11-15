@@ -1,0 +1,13 @@
+# office-docs-reader の実行に必要なパッケージ
+# インストール: pip install -r requirements.txt
+#
+# 前提: Python 3.10以上
+# 注意: pandoc は pip では入らない外部コマンド（任意。.docx変換の主ルート）。
+#   未導入の場合は標準ライブラリの予備抽出に自動で切り替わる。
+#   Windows: winget install Pandoc.Pandoc / Mac: brew install pandoc
+
+# .xlsx の読み取り（セル・結合・コメント・画像アンカー）に必須
+openpyxl>=3.1
+
+# openpyxl が埋め込み画像を扱うために必要（画像抽出に使用）
+Pillow>=10.0
