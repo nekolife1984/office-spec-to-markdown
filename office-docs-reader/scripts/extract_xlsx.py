@@ -1,0 +1,222 @@
+#!/usr/bin/env python3
+"""Excel (.xlsx/.xlsm) extraction: cells via openpyxl, plus shape/text-box
+text, cell comments and anchored images parsed from the file's XML parts.
+Can also be run standalone:
+
+    python3 extract_xlsx.py <input.xlsx> -o <output_dir>
+"""
+import hashlib
+import json
+import sys
+import zipfile
+from pathlib import Path
+from xml.etree import ElementTree as ET
+
+from extract_common import cell_ref, esc, q, run_extraction
+
+
+def parse_sheet_rels(zf, sheet_path):
+    """Return {rel_type_suffix: target_path} for one worksheet."""
+    rels_path = str(Path(sheet_path).parent / "_rels" / (Path(sheet_path).name + ".rels"))
+    result = {}
+    try:
+        root = ET.fromstring(zf.read(rels_path))
+    except KeyError:
+        return result
+    base = Path(sheet_path).parent
+    for rel in root:
+        target = rel.get("Target")
+        rtype = rel.get("Type", "").rsplit("/", 1)[-1]
+        if target.startswith("/"):
+            resolved = target.lstrip("/")
+        else:
+            resolved = str(base / target)
+        # normalise a/../b style paths
+        parts = []
+        for seg in resolved.split("/"):
+            if seg == "..":
+                parts.pop()
+            elif seg not in (".", ""):
+                parts.append(seg)
+        result[rtype] = "/".join(parts)
+    return result
+
+
+def extract_shapes(zf, drawing_path):
+    """Extract text from drawing shapes (incl. text boxes and grouped shapes).
+
+    Returns a list of {anchor_cell, text} sorted by anchor position.
+    """
+    try:
+        root = ET.fromstring(zf.read(drawing_path))
+    except KeyError:
+        return []
+    shapes = []
+    for anchor in root:
+        frm = anchor.find(q("xdr", "from"))
+        col = int(frm.find(q("xdr", "col")).text) if frm is not None else 0
+        row = int(frm.find(q("xdr", "row")).text) if frm is not None else 0
+        for sp in anchor.iter(q("xdr", "sp")):
+            paras = []
+            for p in sp.iter(q("a", "p")):
+                t = "".join(node.text or "" for node in p.iter(q("a", "t"))).strip()
+                if t:
+                    paras.append(t)
+            text = "\n".join(paras).strip()
+            if text:
+                shapes.append({"anchor_cell": cell_ref(col, row), "_sort": (row, col), "text": text})
+    shapes.sort(key=lambda s: s["_sort"])
+    for s in shapes:
+        del s["_sort"]
+    return shapes
+
+
+def extract_comments(zf, comments_path):
+    try:
+        root = ET.fromstring(zf.read(comments_path))
+    except KeyError:
+        return []
+    out = []
+    for comment in root.iter():
+        if comment.tag.endswith("}comment"):
+            text = "".join(t.text or "" for t in comment.iter() if t.tag.endswith("}t")).strip()
+            if text:
+                out.append({"cell": comment.get("ref"), "author": comment.get("author", ""), "text": text})
+    return out
+
+
+def convert_xlsx(src, out):
+    try:
+        from openpyxl import load_workbook
+    except ImportError:
+        sys.exit("openpyxl is required for .xlsx (pip install openpyxl Pillow), "
+                 "or run markitdown for a cells-only first pass.")
+    media_dir = out / "media"
+    work_dir = out / "work"
+    work_dir.mkdir(parents=True, exist_ok=True)
+    stem = src.stem
+    inv = {"source": src.name, "type": "xlsx", "sheets": []}
+    warnings = []
+
+    with zipfile.ZipFile(src) as zf:
+        names = zf.namelist()
+        media_files = [n for n in names if n.startswith("xl/media/") and not n.endswith("/")]
+        chart_files = [n for n in names if n.startswith("xl/charts/chart") and n.endswith(".xml")]
+        media_bytes = {}
+        if media_files:
+            media_dir.mkdir(parents=True, exist_ok=True)
+            for n in media_files:
+                data = zf.read(n)
+                (media_dir / Path(n).name).write_bytes(data)
+                media_bytes[hashlib.sha256(data).hexdigest()] = Path(n).name
+
+        wb = load_workbook(src, data_only=True)
+        # map sheet name -> sheet xml path, in workbook order
+        wb_rels = {}
+        try:
+            root = ET.fromstring(zf.read("xl/_rels/workbook.xml.rels"))
+            for rel in root:
+                wb_rels[rel.get("Id")] = rel.get("Target")
+        except KeyError:
+            pass
+        wbxml = ET.fromstring(zf.read("xl/workbook.xml"))
+        sheet_paths = {}
+        for sh in wbxml.iter():
+            if sh.tag.endswith("}sheet"):
+                rid = sh.get(q("r", "id"))
+                target = wb_rels.get(rid, "")
+                if target.startswith("/"):
+                    sheet_paths[sh.get("name")] = target.lstrip("/")
+                elif target.startswith("xl/"):
+                    sheet_paths[sh.get("name")] = target
+                else:
+                    sheet_paths[sh.get("name")] = "xl/" + target
+
+        md_parts = [f"# {stem}"]
+        all_shapes = {}
+        for ws in wb.worksheets:
+            s_inv = {"name": ws.title, "state": ws.sheet_state,
+                     "max_row": ws.max_row, "max_column": ws.max_column,
+                     "merged_ranges": [str(r) for r in ws.merged_cells.ranges]}
+            rels = parse_sheet_rels(zf, sheet_paths.get(ws.title, "")) if ws.title in sheet_paths else {}
+
+            # --- cells -> markdown table (trailing empty rows/cols trimmed)
+            grid = []
+            for row in ws.iter_rows():
+                grid.append(["" if c.value is None else esc(c.value) for c in row])
+            while grid and all(v == "" for v in grid[-1]):
+                grid.pop()
+            width = 0
+            for r in grid:
+                for i in range(len(r), 0, -1):
+                    if r[i - 1] != "":
+                        width = max(width, i)
+                        break
+            grid = [r[:width] for r in grid]
+            s_inv["table_rows"] = len(grid)
+
+            md_parts.append(f"\n## シート: {ws.title}" + ("（非表示）" if ws.sheet_state != "visible" else ""))
+            if grid:
+                header = grid[0] if any(grid[0]) else [f"列{i+1}" for i in range(width)]
+                md_parts.append("| " + " | ".join(header) + " |")
+                md_parts.append("| " + " | ".join(["---"] * width) + " |")
+                for r in grid[1:]:
+                    md_parts.append("| " + " | ".join(r) + " |")
+            else:
+                md_parts.append("（セルに値なし）")
+
+            # --- shapes / text boxes
+            shapes = extract_shapes(zf, rels["drawing"]) if "drawing" in rels else []
+            if shapes:
+                all_shapes[ws.title] = shapes
+                md_parts.append("\n### 図形・テキストボックス内のテキスト")
+                for s in shapes:
+                    md_parts.append(f"- （{s['anchor_cell']}付近）{esc(s['text'])}")
+            s_inv["shapes_with_text"] = len(shapes)
+
+            # --- comments
+            comments = extract_comments(zf, rels["comments"]) if "comments" in rels else []
+            if comments:
+                md_parts.append("\n### セルコメント")
+                for c in comments:
+                    md_parts.append(f"- （{c['cell']}）{esc(c['text'])}")
+            s_inv["comments"] = len(comments)
+
+            # --- images anchored on this sheet
+            sheet_images = []
+            for img in getattr(ws, "_images", []):
+                anchor = getattr(img, "anchor", None)
+                frm = getattr(anchor, "_from", None)
+                try:
+                    digest = hashlib.sha256(img._data()).hexdigest()
+                    fn = media_bytes.get(digest)
+                except Exception:
+                    fn = None
+                if fn:
+                    sheet_images.append({"file": fn,
+                                         "anchor_cell": cell_ref(frm.col, frm.row) if frm else "?"})
+            if sheet_images:
+                md_parts.append("\n### 画像")
+                for im in sheet_images:
+                    md_parts.append(f"- ![図（{im['anchor_cell']}付近）](media/{im['file']})")
+            s_inv["images"] = len(sheet_images)
+            inv["sheets"].append(s_inv)
+
+        inv["media_files"] = len(media_files)
+        inv["charts"] = len(chart_files)
+        if chart_files:
+            warnings.append(f"{len(chart_files)} Excel chart object(s) found. Charts are not images: "
+                            "render them via Excel/LibreOffice to PNG (PDF route) before restructuring.")
+        if media_files and sum(s["images"] for s in inv["sheets"]) < len(media_files):
+            warnings.append("Some media files could not be anchored to a sheet (e.g. in-cell images). "
+                            "They are extracted under media/; place them manually.")
+        (work_dir / "shapes.json").write_text(json.dumps(all_shapes, ensure_ascii=False, indent=2), encoding="utf-8")
+        (out / "extracted.md").write_text("\n".join(md_parts) + "\n", encoding="utf-8")
+    inv["warnings"] = warnings
+    return inv
+
+
+
+
+if __name__ == "__main__":
+    run_extraction(convert_xlsx, {".xlsx", ".xlsm"})

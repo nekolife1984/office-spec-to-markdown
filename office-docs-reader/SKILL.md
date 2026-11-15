@@ -99,4 +99,10 @@ python3 <skill>/scripts/extract.py <file.docx|file.xlsx|file.pdf> -o <out_dir>
 ## 詳細
 
 ファイル形式の対応表（.docx/.xlsxの内部のどこに何が入っているか）と
-トラブルシューティングは `references/extraction-notes.md` を参照。
+内部構造の詳細とトラブルシューティングは参照ノートへ。共通事項は
+`references/extraction-notes.md`、形式ごとの内部構造は
+`references/extraction-docx.md`／`extraction-xlsx.md`／
+`extraction-pdf.md`（対象形式のものだけ読めばよい）。
+スクリプトも形式別に分かれている：`scripts/extract.py` が拡張子で
+`extract_docx.py`／`extract_xlsx.py`／`extract_pdf.py` に振り分ける
+（各モジュールを直接実行してもよい）。

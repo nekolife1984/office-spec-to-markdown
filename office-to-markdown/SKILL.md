@@ -42,7 +42,7 @@ office-docs-readerが生成した抽出ディレクトリ：
 - Word：文書のスタイル／セクションから見出し階層を決める。
 - PDF：論理構造がないため、フォントサイズ・太字・しおり（目次）から
   見出し階層を復元し、全ページに繰り返されるヘッダー・フッター・
-  ページ番号を取り除く。詳細は変換ルールのPDF節を参照。
+  ページ番号を取り除く。詳細は変換ルールのPDF編（`references/conversion-pdf.md`）を参照。
 - Excel：先に各シートを種別分類する（データ表／画面仕様／文章／
   図主体／表紙・履歴）。種別ごとに構造は異なる。
   `references/conversion-rules.md` を参照。
@@ -111,4 +111,7 @@ SmartArtがdrawio.svg（描き直し）またはPNG＋説明（難しいもの�
 
 詳細ルール——Word固有の扱い、Excelのシート種別、結合セル、数式、
 非表示シート、検証チェックリスト全文——は
-`references/conversion-rules.md` にある。再構成の前に読むこと。
+`references/conversion-rules.md`（共通）にある。形式ごとのルールは
+`references/conversion-docx.md`／`conversion-xlsx.md`／
+`conversion-pdf.md` に分かれているので、対象形式のものだけ読めば
+よい。再構成の前に読むこと。

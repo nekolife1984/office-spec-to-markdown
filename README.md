@@ -37,13 +37,19 @@ requirements.txt                    リポジトリ全体の依存（本体＋�
 office-docs-reader/
   SKILL.md
   requirements.txt                  抽出スクリプトの依存（openpyxl / Pillow）
-  scripts/extract.py                .docx/.xlsx/.pdf → extracted.md + inventory.json + media/
-  references/extraction-notes.md    各内容がファイル形式の内部のどこにあるか
+  scripts/extract.py                拡張子で形式別モジュールへ振り分ける入口
+  scripts/extract_docx.py           Word抽出（pandoc／標準ライブラリ予備抽出）
+  scripts/extract_xlsx.py           Excel抽出（openpyxl＋XML解析）
+  scripts/extract_pdf.py            PDF抽出（PyMuPDF：テキスト・表・画像）
+  scripts/extract_common.py         形式共通の部品（出力の契約・CLI）
+  references/extraction-notes.md    共通ノート＋形式別ノートへの案内
+  references/extraction-{docx,xlsx,pdf}.md  形式ごとの内部構造
 office-to-markdown/
   SKILL.md
   scripts/verify.py                 inventory.jsonとのリンク・個数検証
   scripts/make_drawio_svg.py        JSONの図仕様から編集可能な.drawio.svgを生成
-  references/conversion-rules.md    Word/Excel変換ルールの詳細
+  references/conversion-rules.md    共通の変換ルール＋検証チェックリスト
+  references/conversion-{docx,xlsx,pdf}.md  形式ごとの変換ルール
   templates/convert-spec.prompt.md  GitHub Copilot用プロンプトファイル（.github/prompts/）
 examples/
   make_samples.py                   テスト用サンプル.docx/.xlsxの生成
