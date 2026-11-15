@@ -1,94 +1,89 @@
 ---
 name: office-docs-reader
-description: Read Word (.docx) and Excel (.xlsx) documents completely for AI analysis — extract paragraphs, headings, tables, cell values, shape and text-box text, cell comments, embedded images and charts information, with positions and counts. Use whenever an AI agent needs to read, understand, search, summarize or answer questions about a .docx/.xlsx file (including 仕様書・設計書), or as the extraction step before converting Office documents to Markdown with the office-to-markdown skill. Do NOT rely on reading the binary directly or on tools that only extract cell/body text — shapes, comments and images are silently dropped by those.
+description: Word（.docx）とExcel（.xlsx）をAIが分析するために完全に読み取るスキル。段落・見出し・表・セルの値・図形とテキストボックス内のテキスト・セルコメント・埋め込み画像・グラフの情報を、位置と個数付きで抽出する。.docx/.xlsxファイル（仕様書・設計書を含む）を読解・検索・要約・質疑応答したいとき、または office-to-markdown スキルでMarkdownへ変換する前段の抽出ステップとして使う。バイナリを直接読む方法や、本文とセルの値だけを抽出するツールに頼ってはいけない。図形・コメント・画像が黙って欠落する。
 ---
 
 # Office文書リーダー（AIがWord/Excelを読む）
 
-## Purpose
+## 目的
 
-Give the agent a **complete and faithful** view of a .docx/.xlsx file:
-not just body text and cell values, but also the content that naive
-extractors silently drop — text inside shapes, text boxes and callouts,
-cell comments, embedded images (with their positions), charts, hidden
-sheets and merged-cell structure.
+.docx/.xlsxファイルを、エージェントが**完全かつ忠実に**把握できるようにする。
+本文やセルの値だけでなく、素朴な抽出ツールが黙って落とすもの——図形・
+テキストボックス・吹き出しの中のテキスト、セルコメント、埋め込み画像
+（位置付き）、グラフ、非表示シート、セル結合の構造——まで対象にする。
 
-This skill is about *reading*. It does not restructure or rewrite.
-For turning the extracted material into polished Markdown, hand the
-output to the **office-to-markdown** skill.
+このスキルは「読む」ためのもので、再構成や書き換えはしない。
+抽出物を整ったMarkdownにしたい場合は、**office-to-markdown** スキルへ渡す。
 
-## Workflow
+## 手順
 
-### 1. Extract
+### 1. 抽出する
 
 ```bash
 python3 <skill>/scripts/extract.py <file.docx|file.xlsx> -o <out_dir>
 ```
 
-Outputs:
+出力：
 
 ```
 <out_dir>/
-  extracted.md     faithful extraction, annotated with positions
-  inventory.json   counts and warnings — read this first
-  media/           extracted images
-  work/shapes.json shape/text-box texts with anchor cells (xlsx)
+  extracted.md     位置情報付きの忠実な抽出結果
+  inventory.json   個数と警告（最初に読む）
+  media/           抽出した画像
+  work/shapes.json 図形・テキストボックスのテキストとアンカーセル（xlsx）
 ```
 
-- **.docx**: uses pandoc when installed (best fidelity), otherwise a
-  stdlib fallback (headings, paragraphs, tables, images).
-- **.xlsx**: uses openpyxl for cells plus direct parsing of the file's
-  XML parts — `xl/drawings/*.xml` for shape/text-box text and anchors,
-  `xl/comments*.xml` for comments, `xl/media/*` for pictures.
-  MarkItDown is an acceptable cells-only supplement, never the sole
-  source: it extracts neither images nor shape text.
+- **.docx**：pandocが入っていればそれを使う（最も忠実）。なければ標準
+  ライブラリの予備抽出（見出し・段落・表・画像）に切り替える。
+- **.xlsx**：セルはopenpyxlで読み、ファイル内部のXMLパーツも直接解析する
+  ——図形・テキストボックスのテキストとアンカーは `xl/drawings/*.xml`、
+  コメントは `xl/comments*.xml`、画像は `xl/media/*` から取る。
+  MarkItDownはセルだけの補助としては使えるが、単独の情報源にしては
+  いけない。画像も図形内テキストも抽出できないため。
 
-### 2. Read the inventory before the text
+### 2. 本文より先に棚卸し（inventory）を読む
 
-`inventory.json` tells you what the document *contains*: sheets (and
-whether they are hidden), merged ranges, shapes with text, comments,
-media files, charts, and warnings. If a count is zero where the user
-expects content, stop and investigate instead of answering from a
-partial extraction.
+`inventory.json` には文書の「中身の一覧」が入っている：シート（非表示か
+どうかも）、結合範囲、テキストを持つ図形、コメント、メディアファイル、
+グラフ、警告。ユーザーが期待する内容があるはずなのに個数が0なら、
+部分的な抽出で答えずに、まず立ち止まって原因を調べる。
 
-### 3. Answer / hand off from the extraction
+### 3. 抽出物から答える／次へ渡す
 
-- Read `extracted.md` for body text, tables and cell values.
-- Read `work/shapes.json` for shape and text-box text (anchor cell =
-  which part of the sheet it annotates).
-- Look at the images in `media/` when the question is about a figure,
-  screenshot or diagram. An image's anchor cell tells you where it
-  belongs; the surrounding cells tell you what it illustrates.
-- For layout-dependent questions ("what is next to this figure?",
-  reading order of a free-form Excel sheet), export the source to PDF
-  (Excel or LibreOffice headless) and read the rendered pages as images.
-  The PDF is the ground truth for layout; the extraction is the ground
-  truth for exact text and numbers.
+- 本文・表・セルの値は `extracted.md` を読む。
+- 図形・テキストボックスのテキストは `work/shapes.json` を読む
+  （アンカーセル＝その図形がシートのどこへの注釈かを示す）。
+- 図・画面キャプチャ・ダイアグラムについての質問では `media/` の画像を
+  見る。画像のアンカーセルが所属場所を、周囲のセルが何の図かを示す。
+- レイアウト依存の質問（「この図の横にあるのは何か」、自由形式シートの
+  読み順など）では、元ファイルをPDFに書き出して（ExcelまたはLibreOfficeの
+  ヘッドレス変換）、描画されたページを画像として読む。レイアウトの正解は
+  PDF、正確なテキストと数値の正解は抽出物、と使い分ける。
 
-## What cannot be extracted (say so, do not guess)
+## 抽出できないもの（推測せず、そう伝える）
 
-- Excel charts and SmartArt are objects, not text or images. The
-  inventory counts them; read them via a PDF/PNG rendering.
-- Grouped or complex diagrams: extract their texts, but get the
-  structure (arrows, grouping) from a rendering.
-- In-cell Excel images (セル内画像) may not anchor to a sheet; they are
-  extracted to `media/` and flagged in `warnings`.
-- Formula cells yield cached values. When the formula itself matters,
-  re-read with `openpyxl` (`data_only=False`) and report both.
-- Headers/footers, tracked changes and colour-only meaning are not in
-  the extraction unless explicitly requested (pandoc
-  `--track-changes=all` for Word change history).
+- ExcelのグラフとSmartArtはオブジェクトであり、テキストでも画像でもない。
+  棚卸しで個数は数えるので、読むときはPDF/PNGの描画経由にする。
+- グループ化された複雑な図：テキストは抽出するが、構造（矢印・グルーピング）
+  は描画から読み取る。
+- セル内画像（新しいExcelの機能）はシートにアンカーできないことがある。
+  `media/` へ抽出され、`warnings` に記録される。
+- 数式セルはキャッシュ値が得られる。数式そのものが重要な場合は
+  `openpyxl`（`data_only=False`）で読み直し、値と数式の両方を報告する。
+- ヘッダー・フッター、変更履歴、色だけで表された意味は、明示的に求め
+  られない限り抽出に入らない（Wordの変更履歴は pandoc の
+  `--track-changes=all` で取得できる）。
 
-## Rules for answering from Office documents
+## Office文書から答えるときのルール
 
-- Cite positions: sheet name + cell range, shape anchor, or page of the
-  PDF rendering — not just "the document says".
-- Never claim a document has no figures/comments/diagrams without
-  checking `inventory.json` counts.
-- When extraction warnings exist, mention what might be missing in
-  your answer instead of presenting partial content as complete.
+- 位置を引用する：シート名＋セル範囲、図形のアンカー、PDF描画のページ
+  など。「文書に書いてある」だけにしない。
+- `inventory.json` の個数を確認せずに「図・コメント・ダイアグラムはない」
+  と断言しない。
+- 抽出に警告がある場合は、答えの中で「欠けている可能性があるもの」を
+  伝え、部分的な内容を完全なものとして提示しない。
 
-## Details
+## 詳細
 
-See `references/extraction-notes.md` for the file-format map (where each
-kind of content lives inside .docx/.xlsx) and troubleshooting.
+ファイル形式の対応表（.docx/.xlsxの内部のどこに何が入っているか）と
+トラブルシューティングは `references/extraction-notes.md` を参照。

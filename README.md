@@ -1,88 +1,89 @@
-# Office skills: read Word/Excel, then convert to Markdown
+# Officeスキル：Word/Excelを読んで、Markdownに変換する
 
 Word（.docx）・Excel（.xlsx）をAIが読むためのスキルと、仕様書・設計書を
 Markdown（GFM）へ変換するためのスキル、2本セットです。
 
-Two agent skills that separate *reading* Office documents from *converting*
-them:
+「読む」ことと「変換する」ことを分けた、2つのエージェントスキルです：
 
-| Skill | Job | Use it when |
+| スキル | 役割 | 使う場面 |
 |---|---|---|
-| **office-docs-reader** | Extract everything an AI needs to read a .docx/.xlsx: body text, tables, cells, shape/text-box text, comments, images with positions, counts | An AI must read, search, summarize or answer questions about a Word/Excel file |
-| **office-to-markdown** | Restructure the reader's extraction into maintainable Markdown under explicit rules, verified by counts | A Word/Excel document (especially a 仕様書・設計書) must become a .md file for Git / docs-as-code |
+| **office-docs-reader** | AIが.docx/.xlsxを読むために必要なものをすべて抽出する：本文、表、セル、図形・テキストボックスのテキスト、コメント、位置付きの画像、個数 | AIにWord/Excelファイルを読ませる・検索させる・要約させる・質問に答えさせるとき |
+| **office-to-markdown** | readerの抽出物を、明示的なルールで保守しやすいMarkdownに再構成し、個数で検証する | Word/Excel文書（特に仕様書・設計書）をGit／docs-as-code向けの.mdファイルにするとき |
 
-## Why split reading and converting?
+## なぜ「読む」と「変換する」を分けるのか
 
-Naive one-shot conversion silently drops exactly the parts that matter in
-specification documents: text inside shapes and callouts, cell comments,
-charts, merged-cell structure. Reading is also useful on its own (Q&A,
-search, summarization) without any conversion. So:
+一発変換では、仕様書で一番大事な部分が黙って落ちます：図形や吹き出しの
+中のテキスト、セルコメント、グラフ、セル結合の構造。「読む」だけの用途
+（質疑応答、検索、要約）も変換なしで役に立ちます。そこで：
 
-1. **office-docs-reader** extracts mechanically and faithfully —
-   `scripts/extract.py` produces `extracted.md`, `inventory.json`,
-   `media/` and `work/shapes.json`. Nothing is restructured, nothing is
-   silently dropped; un-extractable items (charts, SmartArt) are counted
-   and flagged.
-2. **office-to-markdown** consumes that extraction and restructures it
-   under `references/conversion-rules.md` (Excel sheet-type
-   classification, drawio.svg vs. PNG decisions for figures, making colour/grey-out
-   meaning explicit, …), then reconciles the result with the inventory
-   via `scripts/verify.py`.
+1. **office-docs-reader** が機械的に、忠実に抽出します——
+   `scripts/extract.py` が `extracted.md`、`inventory.json`、`media/`、
+   `work/shapes.json` を生成。再構成はせず、黙って落とすこともなし。
+   抽出できないもの（グラフ、SmartArt）は個数を数えて警告に記録します。
+2. **office-to-markdown** がその抽出物を受け取り、
+   `references/conversion-rules.md` に従って再構成します（Excelのシート
+   種別分類、図のdrawio.svg化かPNGかの判断、色・グレーアウトの意味の
+   明示化など）。その後、`scripts/verify.py` で棚卸しと照合します。
 
-## Layout
+図の変換方針：箱・矢印・テキストの図は編集可能な **drawio.svg**
+（diagrams.net埋め込みSVG）に描き直すのが既定で、写真・スクリーン
+ショット・高密度な図・データのグラフなど難しいものは **PNG** のままに
+します。
+
+## 構成
 
 ```
 office-docs-reader/
   SKILL.md
-  scripts/extract.py                .docx/.xlsx -> extracted.md + inventory.json + media/
-  references/extraction-notes.md    where each content type lives in the file formats
+  scripts/extract.py                .docx/.xlsx → extracted.md + inventory.json + media/
+  references/extraction-notes.md    各内容がファイル形式の内部のどこにあるか
 office-to-markdown/
   SKILL.md
-  scripts/verify.py                 link/count verification against inventory.json
-  scripts/make_drawio_svg.py        build editable .drawio.svg figures from a JSON diagram spec
-  references/conversion-rules.md    detailed Word/Excel conversion rules
-  templates/convert-spec.prompt.md  GitHub Copilot prompt file (.github/prompts/)
+  scripts/verify.py                 inventory.jsonとのリンク・個数検証
+  scripts/make_drawio_svg.py        JSONの図仕様から編集可能な.drawio.svgを生成
+  references/conversion-rules.md    Word/Excel変換ルールの詳細
+  templates/convert-spec.prompt.md  GitHub Copilot用プロンプトファイル（.github/prompts/）
 examples/
-  make_samples.py                   generates sample .docx/.xlsx for testing
+  make_samples.py                   テスト用サンプル.docx/.xlsxの生成
 ```
 
-## Quick start
+## クイックスタート
 
 ```bash
-# 1. Read / extract (docx: pandoc when installed, stdlib fallback otherwise;
-#    xlsx: pip install openpyxl Pillow)
+# 1. 読む／抽出する（docx: pandocがあれば使用、なければ標準ライブラリの予備抽出
+#    xlsx: pip install openpyxl Pillow）
 python3 office-docs-reader/scripts/extract.py spec.xlsx -o out/
-# -> out/extracted.md, out/inventory.json, out/media/, out/work/shapes.json
+# → out/extracted.md、out/inventory.json、out/media/、out/work/shapes.json
 
-# 2. Convert: restructure out/extracted.md into out/spec.md following
-#    office-to-markdown/references/conversion-rules.md (this is the agent's job)
+# 2. 変換する：office-to-markdown/references/conversion-rules.md に従って
+#    out/extracted.md を out/spec.md に再構成する（エージェントの仕事）
 
-# 3. Verify the result against the inventory
+# 3. 棚卸しと照合して検証する
 python3 office-to-markdown/scripts/verify.py out/ spec.md
 ```
 
-## Use with your agent
+## エージェントでの使い方
 
-- **Agent Skills compatible agents** (GitHub Copilot in VS Code, Claude
-  Code, Codex, …): copy or clone both skill folders into your skills
-  directory, or reference them from your workspace. They also work
-  independently — install only the reader if you never convert.
-- **GitHub Copilot prompt file**: copy
-  `office-to-markdown/templates/convert-spec.prompt.md` to
-  `.github/prompts/convert-spec.prompt.md` in your repository and run
-  `/convert-spec` in Copilot Chat (agent mode). It drives both skills in
-  sequence.
+- **Agent Skills対応エージェント**（VS CodeのGitHub Copilot、Claude
+  Code、Codexなど）：2つのスキルフォルダをスキル用ディレクトリにコピー
+  するか、ワークスペースから参照してください。片方だけでも使えます
+  （変換しないならreaderだけ入れる）。
+- **GitHub Copilot用プロンプトファイル**：
+  `office-to-markdown/templates/convert-spec.prompt.md` をリポジトリの
+  `.github/prompts/convert-spec.prompt.md` にコピーし、Copilot Chat
+  （エージェントモード）で `/convert-spec` を実行してください。
+  2スキルを順に駆動します。
 
-## Test
+## テスト
 
 ```bash
 python3 examples/make_samples.py /tmp/spec-samples
 python3 office-docs-reader/scripts/extract.py /tmp/spec-samples/sample.xlsx -o /tmp/out-xlsx
 python3 office-docs-reader/scripts/extract.py /tmp/spec-samples/sample.docx -o /tmp/out-docx
-# after restructuring extracted.md into a final .md in the same folder:
+# extracted.md を同じフォルダ内の最終.mdに再構成した後に：
 python3 office-to-markdown/scripts/verify.py /tmp/out-xlsx
 ```
 
-## License
+## ライセンス
 
 MIT

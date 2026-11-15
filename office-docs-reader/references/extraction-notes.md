@@ -1,50 +1,50 @@
-# Extraction notes — where content lives inside .docx / .xlsx
+# 抽出ノート ― .docx / .xlsx の内部のどこに何が入っているか
 
-Both formats are ZIP archives of XML parts. When a library does not
-surface some content, read the part directly instead of concluding the
-content is absent.
+どちらの形式も、XMLパーツをまとめたZIPアーカイブである。ライブラリが
+表に出してこない内容がある場合は、「その内容は存在しない」と結論づけず、
+パーツを直接読むこと。
 
-## Word (.docx)
+## Word（.docx）
 
-| Content | Location |
+| 内容 | 場所 |
 |---|---|
-| Body, headings, tables | `word/document.xml` (styles in `word/styles.xml`) |
-| Images | `word/media/*`, referenced by `a:blip/@r:embed` → `word/_rels/document.xml.rels` |
-| Footnotes / endnotes | `word/footnotes.xml`, `word/endnotes.xml` |
-| Comments | `word/comments.xml` |
-| Headers / footers | `word/header*.xml`, `word/footer*.xml` |
-| Text boxes / shapes | drawing elements inside `document.xml` (`w:txbxContent`) — pandoc drops most of these |
-| SmartArt | `word/diagrams/*` plus a fallback drawing in `document.xml` |
+| 本文・見出し・表 | `word/document.xml`（スタイルは `word/styles.xml`） |
+| 画像 | `word/media/*`、`a:blip/@r:embed` → `word/_rels/document.xml.rels` で参照 |
+| 脚注・文末脚注 | `word/footnotes.xml`、`word/endnotes.xml` |
+| コメント | `word/comments.xml` |
+| ヘッダー・フッター | `word/header*.xml`、`word/footer*.xml` |
+| テキストボックス・図形 | `document.xml` 内の描画要素（`w:txbxContent`）— pandocは大部分を落とす |
+| SmartArt | `word/diagrams/*` と `document.xml` 内のフォールバック描画 |
 
-## Excel (.xlsx)
+## Excel（.xlsx）
 
-| Content | Location |
+| 内容 | 場所 |
 |---|---|
-| Cell values, merged ranges | `xl/worksheets/sheetN.xml` (+ `xl/sharedStrings.xml`) |
-| Sheet order, names, visibility | `xl/workbook.xml` + `xl/_rels/workbook.xml.rels` |
-| Per-sheet drawings/comments links | `xl/worksheets/_rels/sheetN.xml.rels` |
-| Shapes, text boxes, callouts, pictures (anchors + text) | `xl/drawings/drawingN.xml` — shapes are `xdr:sp` (also nested in `grpSp`), text in `a:t`, position in the anchor's `xdr:from` |
-| Cell comments | `xl/comments/commentN.xml` (note the singular folder name varies: `xl/comments*`) |
-| Pictures (files) | `xl/media/*` |
-| Charts | `xl/charts/chartN.xml` — objects, not images; render to read |
-| In-cell images | cell `vm` attribute → `xl/metadata.xml` → `xl/richData/*` → `xl/media/*` (openpyxl does not load these) |
+| セルの値・結合範囲 | `xl/worksheets/sheetN.xml`（＋ `xl/sharedStrings.xml`） |
+| シートの順序・名前・表示状態 | `xl/workbook.xml` ＋ `xl/_rels/workbook.xml.rels` |
+| シートごとの描画・コメントへのリンク | `xl/worksheets/_rels/sheetN.xml.rels` |
+| 図形・テキストボックス・吹き出し・画像（アンカーとテキスト） | `xl/drawings/drawingN.xml` — 図形は `xdr:sp`（`grpSp` 内のネストもあり）、テキストは `a:t`、位置はアンカーの `xdr:from` |
+| セルコメント | `xl/comments/commentN.xml`（フォルダ名は `xl/comments*` 側） |
+| 画像ファイル | `xl/media/*` |
+| グラフ | `xl/charts/chartN.xml` — オブジェクトであり画像ではない。描画して読む |
+| セル内画像 | セルの `vm` 属性 → `xl/metadata.xml` → `xl/richData/*` → `xl/media/*`（openpyxlは読み込まない） |
 
-## Troubleshooting
+## トラブルシューティング
 
-- **Images extracted but not anchored**: match by content. openpyxl's
-  `ws._images` gives anchors for floating pictures; hash the image bytes
-  (`img._data()`) and match them against `xl/media/*` files, whose names
-  alone say nothing about position.
-- **A sheet seems missing**: check `sheet_state` in the inventory —
-  hidden and very-hidden sheets are real content until the user says
-  they are scratch.
-- **Numbers look wrong**: date/time cells are serial numbers in the
-  XML; libraries like openpyxl convert them via the cell style. Formula
-  cells show the cached value from the last Excel save, which can be
-  stale if the file was produced by another tool.
-- **Japanese text garbled**: the XML is UTF-8; garbling usually comes
-  from reading shared strings with the wrong encoding in hand-rolled
-  parsers. Prefer openpyxl/pandoc over ad-hoc string handling.
-- **Huge sheets**: free-form spec sheets can have a large used range
-  full of empty formatted cells. Trim trailing all-empty rows/columns
-  (extract.py does) before feeding text to an LLM.
+- **画像が抽出できたがアンカーが分からない**：内容で照合する。浮動画像の
+  アンカーはopenpyxlの `ws._images` で取れる。画像バイトのハッシュ
+  （`img._data()`）を取り、`xl/media/*` のファイルと照合する。ファイル名
+  だけでは位置は分からない。
+- **シートが見当たらない**：棚卸しの `sheet_state` を確認する。非表示・
+  完全非表示（veryHidden）のシートも、ユーザーが作業用だと言うまでは
+  実在の内容として扱う。
+- **数値がおかしい**：日付・時刻セルはXML内ではシリアル値であり、
+  openpyxlなどのライブラリがセルスタイルから変換している。数式セルは
+  最後にExcelで保存したときのキャッシュ値を示すため、別ツールが作った
+  ファイルでは古いことがある。
+- **日本語が文字化けする**：XMLはUTF-8。文字化けはたいてい自作パーサが
+  共有文字列を誤ったエンコーディングで読んだ場合に起きる。即席の文字列
+  処理よりopenpyxl/pandocを優先する。
+- **巨大なシート**：自由形式の仕様書シートは、使用範囲が大きく、書式だけ
+  の空セルで埋まっていることがある。末尾の全空行・全空列を切り落として
+  （extract.pyは実施済み）からLLMに渡す。

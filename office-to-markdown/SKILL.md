@@ -1,109 +1,107 @@
 ---
 name: office-to-markdown
-description: Convert Word (.docx) and Excel (.xlsx) documents — especially specification documents (仕様書・設計書) with tables, shapes, text boxes, comments and images — into structured, Git-friendly Markdown (GFM). Use when the user wants a .docx/.xlsx turned into a .md file, migrated to docs-as-code / Git management, or restructured for readers and AI. This skill consumes the extraction produced by the office-docs-reader skill (extracted.md + inventory.json + media/) and restructures it under explicit conversion rules, then verifies the result by counts. Do not use it to merely read or summarize an Office document — that is office-docs-reader's job.
+description: Word（.docx）とExcel（.xlsx）の文書、特に表・図形・テキストボックス・コメント・画像を含む仕様書・設計書を、構造化されたGit向きのMarkdown（GFM）に変換するスキル。.docx/.xlsxを.mdファイルにしたいとき、docs-as-code／Git管理へ移行したいとき、読者とAIのために再構成したいときに使う。office-docs-reader スキルの抽出物（extracted.md＋inventory.json＋media/）を入力として、明示的な変換ルールで再構成し、結果を個数で検証する。Office文書を読む・要約するだけならこのスキルではなく office-docs-reader の仕事である。
 ---
 
 # Office文書 → Markdown変換
 
-## Purpose
+## 目的
 
-Turn an Office document into Markdown that a human would be happy to
-maintain in Git: real heading hierarchy, clean tables, figures as
-referenced files, and figures rebuilt as editable drawio.svg
-(diagrams that are too difficult to rebuild faithfully stay PNG).
+Office文書を、Gitで人間が気持ちよく保守できるMarkdownにする：本物の
+見出し階層、きれいな表、ファイル参照される図、そして編集可能な
+drawio.svgへの描き直し（忠実な描き直しが難しい図はPNGのまま）。
 
-Conversion is **restructuring**, not extraction. Extraction is the
-**office-docs-reader** skill's job; this skill starts from its output.
+変換は**再構成**であって抽出ではない。抽出は **office-docs-reader**
+スキルの仕事であり、このスキルはその出力から始める。
 
-## Inputs
+## 入力
 
-An extraction directory produced by office-docs-reader:
+office-docs-readerが生成した抽出ディレクトリ：
 
 ```
 <dir>/
-  extracted.md     faithful extraction with positions
-  inventory.json   counts and warnings (the contract)
-  media/           extracted images
-  work/shapes.json shape/text-box texts with anchors (xlsx)
+  extracted.md     位置情報付きの忠実な抽出結果
+  inventory.json   個数と警告（変換の契約）
+  media/           抽出した画像
+  work/shapes.json 図形・テキストボックスのテキストとアンカー（xlsx）
 ```
 
-If you only have the source .docx/.xlsx, run office-docs-reader first.
-Never restructure directly from the binary.
+元ファイル（.docx/.xlsx）しかない場合は、先にoffice-docs-readerを実行
+する。バイナリから直接再構成してはいけない。
 
-## Workflow
+## 手順
 
-### 1. Read the contract
+### 1. 契約を読む
 
-Read `inventory.json` and note: sections/sheets, tables, shapes with
-text, comments, media files, charts, warnings. These counts are what
-the final Markdown must reconcile with.
+`inventory.json` を読み、セクション／シート、表、テキストを持つ図形、
+コメント、メディアファイル、グラフ、警告を把握する。これらの個数が、
+最終Markdownが照合すべき対象である。
 
-### 2. Plan the structure before writing
+### 2. 書く前に構造を計画する
 
-- Word: heading hierarchy from the document's styles/sections.
-- Excel: classify each sheet first (data table / screen spec / prose /
-  figure-only / cover & history) — each type gets a different structure.
-  See `references/conversion-rules.md`.
-- Decide per figure: **drawio.svg by default, PNG when difficult.**
-  Diagrams that consist of boxes, arrows and text (flowcharts, screen
-  transitions, state diagrams, configuration/architecture diagrams,
-  org charts) are rebuilt as editable `.drawio.svg` — an SVG with the
-  diagrams.net (draw.io) graph embedded, so it renders in Markdown and
-  stays editable in draw.io. Use `scripts/make_drawio_svg.py` for
-  simple node/edge diagrams, or author the .drawio source and export
-  SVG from diagrams.net for richer ones.
-  Figures that are difficult to rebuild faithfully — photos,
-  screenshots, dense/complex diagrams, data charts, anything where a
-  redraw would lose or invent information — stay **PNG** references
-  with a text description. When in doubt, PNG plus description beats a
-  wrong redraw. Figure-only Excel sheets may stay PNG references
-  entirely when they are difficult.
+- Word：文書のスタイル／セクションから見出し階層を決める。
+- Excel：先に各シートを種別分類する（データ表／画面仕様／文章／
+  図主体／表紙・履歴）。種別ごとに構造は異なる。
+  `references/conversion-rules.md` を参照。
+- 図ごとに決める：**既定はdrawio.svg、難しいものはPNG。**
+  箱・矢印・テキストでできた図（フロー図、画面遷移、状態遷移、構成図、
+  組織図など）は、編集可能な `.drawio.svg` に描き直す。これはdiagrams.net
+  （draw.io）のグラフを埋め込んだSVGで、Markdown上で表示でき、draw.ioで
+  開けばそのまま編集できる。単純なノード／矢印の図には
+  `scripts/make_drawio_svg.py` を使い、リッチな図は.drawioソースを作成
+  してdiagrams.netからSVGにエクスポートする。
+  忠実な描き直しが難しい図——写真、スクリーンショット、高密度・複雑な
+  図、データのグラフ、描き直すと情報が落ちたり捏造になったりするもの
+  ——は **PNG** 参照のままにし、テキスト説明を付ける。迷ったら「PNG＋
+  説明」が「間違った描き直し」に勝る。図主体のExcelシートも、難しい
+  場合はまるごとPNG参照でよい。
 
-### 3. Restructure
+### 3. 再構成する
 
-- Absorb shape, text-box and comment text into the section it belongs
-  to (anchor position is the hint). Remove auto shape names
-  ("正方形/長方形 15") — keep only the meaning.
-- Tables that GFM cannot express (merged cells, multi-paragraph cells):
-  use an HTML `<table>`, split the table, or use a definition list plus
-  a simple table. Never drop rows or columns.
-- Make implicit meaning explicit: colour, grey-out, strikethrough or
-  fill that carries meaning becomes text (`<del>`, a status column, a
-  note). Decoration is dropped, once, and mentioned in the report.
-- Keep figure/table numbering and cross-references consistent with the
-  files in `media/`. Rebuilt figures are saved next to the Markdown as
-  `<name>.drawio.svg` and referenced like images
-  (`![図1](<name>.drawio.svg)`); verify.py checks those links too.
-- Write the final file as `<stem>.md` in the extraction directory (next
-  to `extracted.md`, which stays as the audit trail).
+- 図形・テキストボックス・コメントのテキストは、それが属するセクション
+  へ吸収する（アンカー位置が手がかり）。図形の自動名（「正方形/長方形
+  15」）は除去し、意味だけを残す。
+- GFMで表現できない表（セル結合、複数段落のセル）：HTMLの `<table>` を
+  使うか、表を分割するか、定義リスト＋単純な表にする。行や列を落とす
+  ことは決してしない。
+- 暗黙の意味を明示する：意味を持つ色・グレーアウト・取り消し線・塗りは
+  テキストにする（`<del>`、状態の列、注記）。装飾だけのものは落とし、
+  報告で一度だけ触れる。
+- 図表番号と相互参照を `media/` のファイルと整合させる。描き直した図は
+  Markdownの隣に `<name>.drawio.svg` として保存し、画像と同じように
+  参照する（`![図1](<name>.drawio.svg)`）。verify.pyがそのリンクも
+  チェックする。
+- 最終ファイルは抽出ディレクトリに `<stem>.md` として書く
+  （`extracted.md` は監査証跡として隣に残る）。
 
-### 4. Verify
+### 4. 検証する
 
 ```bash
 python3 <skill>/scripts/verify.py <dir> [<stem>.md]
 ```
 
-Reconcile: headings vs. source chapters, table rows/columns, shape
-texts placed = shapes in inventory, comments all placed or explicitly
-dropped with a reason, every media file referenced, no broken links,
-charts/SmartArt present as drawio.svg (rebuilt) or PNG + description
-(difficult ones).
+照合する：見出し数と元の章数、表の行列、配置した図形テキスト数＝棚卸し
+の図形数、コメントは全て配置済みか、落としたものは理由付きで明示、
+メディアファイルが全て参照されている、リンク切れがない、グラフ／
+SmartArtがdrawio.svg（描き直し）またはPNG＋説明（難しいもの）で
+存在する。
 
-### 5. Report
+### 5. 報告する
 
-Tell the user: what was converted, what was rebuilt as drawio.svg, what stayed as PNG/PDF and why,
-what was dropped (page layout, colours, headers/footers), and every
-judgement call. A conversion without this report is not done.
+ユーザーに伝える：何を変換したか、何をdrawio.svgに描き直したか、
+何がPNG/PDFのままでその理由は何か、何を落としたか（ページレイアウト、
+色、ヘッダー・フッター）、そして判断した箇所すべて。この報告のない
+変換は未完了である。
 
-## Using with GitHub Copilot
+## GitHub Copilotでの使い方
 
-Copy `templates/convert-spec.prompt.md` to
-`.github/prompts/convert-spec.prompt.md` in the target repository and
-run `/convert-spec` in agent mode. The prompt drives both skills in
-sequence (reader extraction → this skill's restructuring → verify).
+`templates/convert-spec.prompt.md` を対象リポジトリの
+`.github/prompts/convert-spec.prompt.md` にコピーし、エージェント
+モードで `/convert-spec` を実行する。このプロンプトが2スキルを順に
+駆動する（readerの抽出 → 本スキルの再構成 → 検証）。
 
-## Rules reference
+## ルール参照
 
-All detailed rules — Word specifics, Excel sheet-type handling, merged
-cells, formulas, hidden sheets, the full verification checklist — live
-in `references/conversion-rules.md`. Read it before restructuring.
+詳細ルール——Word固有の扱い、Excelのシート種別、結合セル、数式、
+非表示シート、検証チェックリスト全文——は
+`references/conversion-rules.md` にある。再構成の前に読むこと。

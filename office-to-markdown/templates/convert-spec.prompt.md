@@ -1,26 +1,28 @@
 ---
 mode: agent
-description: Convert a Word/Excel specification document in this workspace to Markdown using the office-docs-reader and office-to-markdown skills
+description: ワークスペース内のWord/Excel仕様書を、office-docs-readerとoffice-to-markdownの2スキルでMarkdownに変換する
 ---
 
-Convert the Office specification document I specify (a .docx or .xlsx file in
-this workspace) into Markdown, using the two skills in sequence:
+指定するOffice仕様書（このワークスペース内の.docxまたは.xlsxファイル）を、
+2つのスキルを順に使ってMarkdownに変換してください：
 
-1. Read it with the office-docs-reader skill first and show me the inventory
-   counts before restructuring anything:
+1. まずoffice-docs-readerスキルで読み取り、再構成の前に棚卸しの個数を
+   見せてください：
    `python3 <reader-skill-path>/scripts/extract.py <file> -o <output-dir>`
-2. Restructure the extracted material with the office-to-markdown skill,
-   according to its `references/conversion-rules.md`. In particular:
-   - absorb shape, text-box and comment text into the sections they belong to
-   - classify each Excel sheet by type before converting it
-   - rebuild figures as editable .drawio.svg (diagrams.net) by default;
-     keep difficult figures (photos, screenshots, dense diagrams, data
-     charts) as PNG references with a text description
-   - never drop table rows, shape texts or comments silently
-3. Run `python3 <converter-skill-path>/scripts/verify.py <output-dir>` and reconcile
-   the counts with inventory.json.
-4. Report: what was converted, what stayed as image/PDF and why, what was
-   dropped (layout, colours, headers/footers), and any judgement calls.
+2. office-to-markdownスキルで抽出物を再構成してください。その際、
+   `references/conversion-rules.md` に従うこと。特に：
+   - 図形・テキストボックス・コメントのテキストは、それが属する
+     セクションへ吸収する
+   - Excelシートは変換前に種別を分類する
+   - 図は既定で編集可能な.drawio.svg（diagrams.net）に描き直す。
+     難しい図（写真、スクリーンショット、高密度な図、データのグラフ）は
+     PNG参照のままにし、テキスト説明を付ける
+   - 表の行、図形テキスト、コメントを黙って落とさない
+3. `python3 <converter-skill-path>/scripts/verify.py <output-dir>` を実行し、
+   inventory.jsonと個数を照合してください。
+4. 報告してください：何を変換したか、何が画像/PDFのままでその理由は
+   何か、何を落としたか（レイアウト、色、ヘッダー・フッター）、
+   判断した箇所はないか。
 
-Do not read the .docx/.xlsx binary directly as the source of truth, and do
-not commit the result until I confirm it.
+.docx/.xlsxのバイナリを直接、正解として読んではいけません。また、
+私が確認するまで結果をコミットしないでください。
