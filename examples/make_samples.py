@@ -6,7 +6,7 @@ image in Word; merged cells, a table, a cell comment, an anchored image and
 a text box (injected drawing XML) in Excel.
 
 Usage: python3 make_samples.py <output_dir>
-Requires: python-docx, openpyxl, Pillow
+Requires: python-docx, openpyxl, Pillow, PyMuPDF
 """
 import sys
 import zipfile
@@ -117,12 +117,46 @@ def make_xlsx(out_dir, png):
     return path
 
 
+def make_pdf(out_dir, png):
+    """Sample PDF (via PyMuPDF): text, a ruled table and an embedded image."""
+    import fitz
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)  # A4
+    page.insert_text((56, 72), "Sample Specification (PDF)", fontsize=18)
+    page.insert_text((56, 110),
+                     "This PDF contains text, a ruled table and an image,\n"
+                     "to test PDF extraction: text blocks, detected tables\n"
+                     "and embedded images must all be captured.",
+                     fontsize=11)
+    # ruled table: 3 columns x 3 rows starting at y=180
+    x0, y0, cw, ch = 56, 180, 150, 28
+    data = [["Item", "Required", "Note"],
+            ["User ID", "Yes", "Email format"],
+            ["Password", "Yes", "8+ characters"]]
+    for i in range(4):
+        page.draw_line((x0, y0 + i * ch), (x0 + 3 * cw, y0 + i * ch))
+    for j in range(4):
+        page.draw_line((x0 + j * cw, y0), (x0 + j * cw, y0 + 3 * ch))
+    for i, row in enumerate(data):
+        for j, v in enumerate(row):
+            page.insert_text((x0 + j * cw + 6, y0 + i * ch + 18), v, fontsize=11)
+    page.insert_text((56, 300), "Figure 1: screen transition image", fontsize=11)
+    page.insert_image(fitz.Rect(56, 320, 376, 520), filename=str(png))
+    page2 = doc.new_page(width=595, height=842)
+    page2.insert_text((56, 72), "Notes", fontsize=14)
+    page2.insert_text((56, 110), "Second page: plain text only.", fontsize=11)
+    path = out_dir / "sample.pdf"
+    doc.save(path)
+    return path
+
+
 def main():
     out_dir = Path(sys.argv[1] if len(sys.argv) > 1 else "samples")
     out_dir.mkdir(parents=True, exist_ok=True)
     png = make_png(out_dir / "_figure.png")
     print(make_docx(out_dir, png))
     print(make_xlsx(out_dir, png))
+    print(make_pdf(out_dir, png))
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 ---
 name: office-to-markdown
-description: Word（.docx）とExcel（.xlsx）の文書、特に表・図形・テキストボックス・コメント・画像を含む仕様書・設計書を、構造化されたGit向きのMarkdown（GFM）に変換するスキル。.docx/.xlsxを.mdファイルにしたいとき、docs-as-code／Git管理へ移行したいとき、読者とAIのために再構成したいときに使う。office-docs-reader スキルの抽出物（extracted.md＋inventory.json＋media/）を入力として、明示的な変換ルールで再構成し、結果を個数で検証する。Office文書を読む・要約するだけならこのスキルではなく office-docs-reader の仕事である。
+description: Word（.docx）とExcel（.xlsx）とPDFの文書、特に表・図形・テキストボックス・コメント・画像を含む仕様書・設計書を、構造化されたGit向きのMarkdown（GFM）に変換するスキル。.docx/.xlsx/.pdfを.mdファイルにしたいとき、docs-as-code／Git管理へ移行したいとき、読者とAIのために再構成したいときに使う。office-docs-reader スキルの抽出物（extracted.md＋inventory.json＋media/）を入力として、明示的な変換ルールで再構成し、結果を個数で検証する。Office文書を読む・要約するだけならこのスキルではなく office-docs-reader の仕事である。
 ---
 
 # Office文書 → Markdown変換
@@ -26,7 +26,7 @@ office-docs-readerが生成した抽出ディレクトリ：
   work/shapes.json 図形・テキストボックスのテキストとアンカー（xlsx）
 ```
 
-元ファイル（.docx/.xlsx）しかない場合は、先にoffice-docs-readerを実行
+元ファイル（.docx/.xlsx/.pdf）しかない場合は、先にoffice-docs-readerを実行
 する。バイナリから直接再構成してはいけない。
 
 ## 手順
@@ -40,6 +40,9 @@ office-docs-readerが生成した抽出ディレクトリ：
 ### 2. 書く前に構造を計画する
 
 - Word：文書のスタイル／セクションから見出し階層を決める。
+- PDF：論理構造がないため、フォントサイズ・太字・しおり（目次）から
+  見出し階層を復元し、全ページに繰り返されるヘッダー・フッター・
+  ページ番号を取り除く。詳細は変換ルールのPDF節を参照。
 - Excel：先に各シートを種別分類する（データ表／画面仕様／文章／
   図主体／表紙・履歴）。種別ごとに構造は異なる。
   `references/conversion-rules.md` を参照。

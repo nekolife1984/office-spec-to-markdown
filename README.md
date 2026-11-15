@@ -1,14 +1,14 @@
-# Officeスキル：Word/Excelを読んで、Markdownに変換する
+# Officeスキル：Word/Excel/PDFを読んで、Markdownに変換する
 
-Word（.docx）・Excel（.xlsx）をAIが読むためのスキルと、仕様書・設計書を
+Word（.docx）・Excel（.xlsx）・PDFをAIが読むためのスキルと、仕様書・設計書を
 Markdown（GFM）へ変換するためのスキル、2本セットです。
 
 「読む」ことと「変換する」ことを分けた、2つのエージェントスキルです：
 
 | スキル | 役割 | 使う場面 |
 |---|---|---|
-| **office-docs-reader** | AIが.docx/.xlsxを読むために必要なものをすべて抽出する：本文、表、セル、図形・テキストボックスのテキスト、コメント、位置付きの画像、個数 | AIにWord/Excelファイルを読ませる・検索させる・要約させる・質問に答えさせるとき |
-| **office-to-markdown** | readerの抽出物を、明示的なルールで保守しやすいMarkdownに再構成し、個数で検証する | Word/Excel文書（特に仕様書・設計書）をGit／docs-as-code向けの.mdファイルにするとき |
+| **office-docs-reader** | AIが.docx/.xlsx/.pdfを読むために必要なものをすべて抽出する：本文、表、セル、図形・テキストボックスのテキスト、コメント、位置付きの画像、個数 | AIにWord/Excelファイルを読ませる・検索させる・要約させる・質問に答えさせるとき |
+| **office-to-markdown** | readerの抽出物を、明示的なルールで保守しやすいMarkdownに再構成し、個数で検証する | Word/Excel/PDF文書（特に仕様書・設計書）をGit／docs-as-code向けの.mdファイルにするとき |
 
 ## なぜ「読む」と「変換する」を分けるのか
 
@@ -37,7 +37,7 @@ requirements.txt                    リポジトリ全体の依存（本体＋�
 office-docs-reader/
   SKILL.md
   requirements.txt                  抽出スクリプトの依存（openpyxl / Pillow）
-  scripts/extract.py                .docx/.xlsx → extracted.md + inventory.json + media/
+  scripts/extract.py                .docx/.xlsx/.pdf → extracted.md + inventory.json + media/
   references/extraction-notes.md    各内容がファイル形式の内部のどこにあるか
 office-to-markdown/
   SKILL.md
@@ -84,6 +84,7 @@ python3 office-to-markdown/scripts/verify.py out/ spec.md
 python3 examples/make_samples.py /tmp/spec-samples
 python3 office-docs-reader/scripts/extract.py /tmp/spec-samples/sample.xlsx -o /tmp/out-xlsx
 python3 office-docs-reader/scripts/extract.py /tmp/spec-samples/sample.docx -o /tmp/out-docx
+python3 office-docs-reader/scripts/extract.py /tmp/spec-samples/sample.pdf -o /tmp/out-pdf
 # extracted.md を同じフォルダ内の最終.mdに再構成した後に：
 python3 office-to-markdown/scripts/verify.py /tmp/out-xlsx
 ```

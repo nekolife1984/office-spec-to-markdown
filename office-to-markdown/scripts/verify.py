@@ -50,7 +50,11 @@ def main():
             problems.append(f"media file not referenced in markdown: {fn}")
 
     print(f"== checklist for {inv.get('source')} ({inv.get('type')}, engine: {inv.get('engine', 'n/a')}) ==")
-    if inv["type"] == "docx":
+    if inv["type"] == "pdf":
+        print(f"pages: {inv.get('page_count')} / tables detected: {inv.get('tables')} / media files: {inv.get('media_files')}")
+        for pg in inv.get("pages", []):
+            print(f"page {pg['page']}: text_chars={pg['text_chars']} tables={pg['tables']} images={pg['images']}")
+    elif inv["type"] == "docx":
         print(f"headings: {inv.get('headings', 'see pandoc output')} / tables: {inv.get('tables', 'count in md')} / "
               f"media files: {inv.get('media_files')}")
     else:

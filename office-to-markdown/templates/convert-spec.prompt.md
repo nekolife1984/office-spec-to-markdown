@@ -3,7 +3,7 @@ mode: agent
 description: ワークスペース内のWord/Excel仕様書を、office-docs-readerとoffice-to-markdownの2スキルでMarkdownに変換する
 ---
 
-指定するOffice仕様書（このワークスペース内の.docxまたは.xlsxファイル）を、
+指定するOffice仕様書（このワークスペース内の.docx、.xlsxまたは.pdfファイル）を、
 2つのスキルを順に使ってMarkdownに変換してください：
 
 1. まずoffice-docs-readerスキルで読み取り、再構成の前に棚卸しの個数を
@@ -28,5 +28,5 @@ description: ワークスペース内のWord/Excel仕様書を、office-docs-rea
    何か、何を落としたか（レイアウト、色、ヘッダー・フッター）、
    判断した箇所はないか。
 
-.docx/.xlsxのバイナリを直接、正解として読んではいけません。また、
+.docx/.xlsx/.pdfを直接、正解として読んではいけません。また、
 私が確認するまで結果をコミットしないでください。

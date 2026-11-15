@@ -1,13 +1,13 @@
 ---
 name: office-docs-reader
-description: Word（.docx）とExcel（.xlsx）をAIが分析するために完全に読み取るスキル。段落・見出し・表・セルの値・図形とテキストボックス内のテキスト・セルコメント・埋め込み画像・グラフの情報を、位置と個数付きで抽出する。.docx/.xlsxファイル（仕様書・設計書を含む）を読解・検索・要約・質疑応答したいとき、または office-to-markdown スキルでMarkdownへ変換する前段の抽出ステップとして使う。バイナリを直接読む方法や、本文とセルの値だけを抽出するツールに頼ってはいけない。図形・コメント・画像が黙って欠落する。
+description: Word（.docx）とExcel（.xlsx）とPDFをAIが分析するために完全に読み取るスキル。段落・見出し・表・セルの値・図形とテキストボックス内のテキスト・セルコメント・埋め込み画像・グラフの情報を、位置と個数付きで抽出する。.docx/.xlsx/.pdfファイル（仕様書・設計書を含む）を読解・検索・要約・質疑応答したいとき、または office-to-markdown スキルでMarkdownへ変換する前段の抽出ステップとして使う。バイナリを直接読む方法や、本文とセルの値だけを抽出するツールに頼ってはいけない。図形・コメント・画像が黙って欠落する。
 ---
 
-# Office文書リーダー（AIがWord/Excelを読む）
+# Office文書リーダー（AIがWord/Excel/PDFを読む）
 
 ## 目的
 
-.docx/.xlsxファイルを、エージェントが**完全かつ忠実に**把握できるようにする。
+.docx/.xlsx/.pdfファイルを、エージェントが**完全かつ忠実に**把握できるようにする。
 本文やセルの値だけでなく、素朴な抽出ツールが黙って落とすもの——図形・
 テキストボックス・吹き出しの中のテキスト、セルコメント、埋め込み画像
 （位置付き）、グラフ、非表示シート、セル結合の構造——まで対象にする。
@@ -23,7 +23,7 @@ description: Word（.docx）とExcel（.xlsx）をAIが分析するために完�
 
 ```bash
 pip install -r <skill>/requirements.txt
-python3 <skill>/scripts/extract.py <file.docx|file.xlsx> -o <out_dir>
+python3 <skill>/scripts/extract.py <file.docx|file.xlsx|file.pdf> -o <out_dir>
 ```
 
 出力：
@@ -38,6 +38,10 @@ python3 <skill>/scripts/extract.py <file.docx|file.xlsx> -o <out_dir>
 
 - **.docx**：pandocが入っていればそれを使う（最も忠実）。なければ標準
   ライブラリの予備抽出（見出し・段落・表・画像）に切り替える。
+- **.pdf**：PyMuPDFで読み、ページごとにテキストブロック（読み順に
+  並べ替え）、検出した表、埋め込み画像を抽出する。テキスト層がほぼ
+  ないページは「スキャンの可能性」として警告に記録される（OCRは
+  このスクリプトの範囲外）。
 - **.xlsx**：セルはopenpyxlで読み、ファイル内部のXMLパーツも直接解析する
   ——図形・テキストボックスのテキストとアンカーは `xl/drawings/*.xml`、
   コメントは `xl/comments*.xml`、画像は `xl/media/*` から取る。
@@ -64,6 +68,12 @@ python3 <skill>/scripts/extract.py <file.docx|file.xlsx> -o <out_dir>
   PDF、正確なテキストと数値の正解は抽出物、と使い分ける。
 
 ## 抽出できないもの（推測せず、そう伝える）
+
+- スキャンされたPDF（テキスト層がないページ）：警告に記録される。
+  読むには先にOCRが必要で、OCRなしに内容を推測してはいけない。
+- PDFのベクター描画でできた図：画像オブジェクトではないため抽出に
+  現れない。ページを画像に描画して読み取る。
+- 暗号化されたPDF：パスワードなしには抽出できない。
 
 - ExcelのグラフとSmartArtはオブジェクトであり、テキストでも画像でもない。
   棚卸しで個数は数えるので、読むときはPDF/PNGの描画経由にする。
