@@ -17,6 +17,10 @@ description: ワークスペース内のWord/Excel仕様書を、office-docs-rea
    - 図は既定で編集可能な.drawio.svg（diagrams.net）に描き直す。
      難しい図（写真、スクリーンショット、高密度な図、データのグラフ）は
      PNG参照のままにし、テキスト説明を付ける
+   - セル結合のある表は、基本は結合値を全セルに伝播してパイプ表に
+     する。見た目が重要な表だけHTML表で結合を保持する
+   - 罫線で図を表現している箇所は表にせず、図としてdrawio.svgに
+     描き直すか、難しいものはPNGにする
    - 表の行、図形テキスト、コメントを黙って落とさない
 3. `python3 <converter-skill-path>/scripts/verify.py <output-dir>` を実行し、
    inventory.jsonと個数を照合してください。
