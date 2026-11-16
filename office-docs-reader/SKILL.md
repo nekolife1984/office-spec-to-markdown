@@ -1,6 +1,7 @@
 ---
 name: office-docs-reader
 description: Word（.docx）とExcel（.xlsx）とPDFをAIが分析するために完全に読み取るスキル。段落・見出し・表・セルの値・図形とテキストボックス内のテキスト・セルコメント・埋め込み画像・グラフの情報を、位置と個数付きで抽出する。.docx/.xlsx/.pdfファイル（仕様書・設計書を含む）を読解・検索・要約・質疑応答したいとき、または office-to-markdown スキルでMarkdownへ変換する前段の抽出ステップとして使う。バイナリを直接読む方法や、本文とセルの値だけを抽出するツールに頼ってはいけない。図形・コメント・画像が黙って欠落する。
+argument-hint: "[読みたい .docx / .xlsx / .pdf ファイルのパス]"
 ---
 
 # Office文書リーダー（AIがWord/Excel/PDFを読む）

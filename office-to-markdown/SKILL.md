@@ -1,6 +1,7 @@
 ---
 name: office-to-markdown
 description: Word（.docx）とExcel（.xlsx）とPDFの文書、特に表・図形・テキストボックス・コメント・画像を含む仕様書・設計書を、構造化されたGit向きのMarkdown（GFM）に変換するスキル。.docx/.xlsx/.pdfを.mdファイルにしたいとき、docs-as-code／Git管理へ移行したいとき、読者とAIのために再構成したいときに使う。office-docs-reader スキルの抽出物（extracted.md＋inventory.json＋media/）を入力として、明示的な変換ルールで再構成し、結果を個数で検証する。Office文書を読む・要約するだけならこのスキルではなく office-docs-reader の仕事である。
+argument-hint: "[変換したい .docx / .xlsx / .pdf ファイル、または抽出ディレクトリのパス]"
 ---
 
 # Office文書 → Markdown変換

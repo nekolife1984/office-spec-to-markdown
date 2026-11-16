@@ -1,9 +1,10 @@
 ---
 mode: agent
 description: ワークスペース内のWord/Excel仕様書を、office-docs-readerとoffice-to-markdownの2スキルでMarkdownに変換する
+argument-hint: "変換したい仕様書ファイルのパス（.docx / .xlsx / .pdf）"
 ---
 
-指定するOffice仕様書（このワークスペース内の.docx、.xlsxまたは.pdfファイル）を、2つのスキルを順に使ってMarkdownに変換してください：
+引数で指定されたOffice仕様書（このワークスペース内の.docx、.xlsxまたは.pdfファイル）を、2つのスキルを順に使ってMarkdownに変換してください：
 
 1. まずoffice-docs-readerスキルで読み取り、再構成の前に棚卸しの個数を見せてください：`python3 <reader-skill-path>/scripts/extract.py <file> -o <output-dir>`
 2. office-to-markdownスキルで抽出物を再構成してください。
