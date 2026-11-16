@@ -6,7 +6,7 @@ mxGraph XML in the root element's `content` attribute, so it renders
 anywhere SVG renders AND can be opened and edited in diagrams.net /
 draw.io as a native diagram. This is the preferred output format for
 figures converted by the office-to-markdown skill; use PNG instead when a
-figure is too complex for this simple node/edge model.
+figure is too complex for this node/edge model.
 
 Input JSON:
 {
@@ -22,9 +22,17 @@ Input JSON:
   ]
 }
 
-- shape: rect (default) | rounded | ellipse | diamond
+- shape: rect (default) | rounded | ellipse | diamond | text | pie
+  - text: label only, no box (titles, notes, axis labels).
+  - pie: one pie/donut segment; needs "start" and "end" as fractions of
+    the full circle (0 = top, clockwise). Overlay a white ellipse node to
+    punch the donut hole.
 - x/y are optional; nodes without positions are laid out in a grid
   (3 columns). Width/height default to 160x60 (diamond 120x80).
+- Optional node fields: "fill", "stroke", "fontColor" (CSS colors),
+  "fontSize" (default 13), "bold" (true/false). Labels may contain "\n"
+  for line breaks.
+- Optional edge fields: "label", "color", "arrow" (false = no arrowhead).
 - Node ids must be unique; edge endpoints must exist.
 
 Usage:
@@ -36,6 +44,7 @@ the embedded mxGraph, so what readers see matches what draw.io opens.
 import argparse
 import html
 import json
+import math
 import sys
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -45,6 +54,8 @@ SHAPES = {
     "rounded": ("rounded=1;", "rect"),
     "ellipse": ("ellipse;", "ellipse"),
     "diamond": ("rhombus;", "diamond"),
+    "text": ("text;", "text"),
+    "pie": ("shape=pie;", "pie"),
 }
 DEFAULT_W, DEFAULT_H = 160, 60
 
@@ -61,7 +72,27 @@ def layout(nodes):
         n.setdefault("h", 80 if n.get("shape") == "diamond" else DEFAULT_H)
         n.setdefault("shape", "rect")
         if n["shape"] not in SHAPES:
-            sys.exit(f"unknown shape: {n['shape']} (use rect|rounded|ellipse|diamond)")
+            sys.exit(f"unknown shape: {n['shape']} (use rect|rounded|ellipse|diamond|text|pie)")
+        if n["shape"] == "pie" and ("start" not in n or "end" not in n):
+            sys.exit(f"pie node {n.get('id')} needs start/end fractions")
+
+
+def node_style(n):
+    shape_style, _ = SHAPES[n["shape"]]
+    if n["shape"] == "text":
+        style = ("text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;"
+                 "fillColor=none;strokeColor=none;")
+    elif n["shape"] == "pie":
+        style = (f"shape=pie;startAngle={n['start']};endAngle={n['end']};html=1;"
+                 f"fillColor={n.get('fill', '#ffffff')};strokeColor={n.get('stroke', '#333333')};")
+        return style
+    else:
+        style = (shape_style + "whiteSpace=wrap;html=1;"
+                 f"fillColor={n.get('fill', '#ffffff')};strokeColor={n.get('stroke', '#333333')};")
+    style += f"fontColor={n.get('fontColor', '#000000')};fontSize={n.get('fontSize', 13)};"
+    if n.get("bold"):
+        style += "fontStyle=1;"
+    return style
 
 
 def build_mxfile(spec, nodes, edges):
@@ -74,20 +105,49 @@ def build_mxfile(spec, nodes, edges):
     ET.SubElement(root, "mxCell", {"id": "0"})
     ET.SubElement(root, "mxCell", {"id": "1", "parent": "0"})
     for n in nodes:
-        style, _ = SHAPES[n["shape"]]
+        value = str(n["label"]).replace("\n", "<br>")
         cell = ET.SubElement(root, "mxCell", {
-            "id": str(n["id"]), "value": str(n["label"]), "vertex": "1", "parent": "1",
-            "style": style + "whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;"})
+            "id": str(n["id"]), "value": value, "vertex": "1", "parent": "1",
+            "style": node_style(n)})
         ET.SubElement(cell, "mxGeometry", {
             "x": str(n["x"]), "y": str(n["y"]),
             "width": str(n["w"]), "height": str(n["h"]), "as": "geometry"})
     for i, e in enumerate(edges):
+        color = e.get("color", "#333333")
+        arrow = "endArrow=block;" if e.get("arrow", True) else "endArrow=none;"
         cell = ET.SubElement(root, "mxCell", {
             "id": f"e{i}", "value": str(e.get("label", "")), "edge": "1", "parent": "1",
             "source": str(e["from"]), "target": str(e["to"]),
-            "style": "edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;"})
+            "style": f"edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;{arrow}strokeColor={color};"})
         ET.SubElement(cell, "mxGeometry", {"relative": "1", "as": "geometry"})
     return ET.tostring(mx, encoding="unicode")
+
+
+def svg_text(x, y, label, font_size=13, color="#000000", bold=False, anchor="middle"):
+    lines = str(label).split("\n")
+    lh = font_size * 1.3
+    y0 = y - (len(lines) - 1) * lh / 2 + font_size * 0.35
+    weight = ' font-weight="bold"' if bold else ""
+    tspans = "".join(
+        f'<tspan x="{x}" dy="{0 if i == 0 else lh}">{html.escape(line)}</tspan>'
+        for i, line in enumerate(lines))
+    return (f'<text x="{x}" y="{y0}" font-size="{font_size}" text-anchor="{anchor}" '
+            f'fill="{color}"{weight}>{tspans}</text>')
+
+
+def pie_path(n):
+    cx, cy = n["x"] + n["w"] / 2, n["y"] + n["h"] / 2
+    rx, ry = n["w"] / 2, n["h"] / 2
+
+    def point(frac):
+        ang = math.radians(-90 + frac * 360)
+        return cx + rx * math.cos(ang), cy + ry * math.sin(ang)
+
+    x1, y1 = point(n["start"])
+    x2, y2 = point(n["end"])
+    large = 1 if (n["end"] - n["start"]) > 0.5 else 0
+    return (f'M {cx} {cy} L {x1:.1f} {y1:.1f} '
+            f'A {rx} {ry} 0 {large} 1 {x2:.1f} {y2:.1f} Z')
 
 
 def build_svg(spec, nodes, edges, mx_xml):
@@ -105,22 +165,33 @@ def build_svg(spec, nodes, edges, mx_xml):
         a, b = by_id[str(e["from"])], by_id[str(e["to"])]
         x1, y1 = a["x"] + a["w"] / 2, a["y"] + a["h"] / 2
         x2, y2 = b["x"] + b["w"] / 2, b["y"] + b["h"] / 2
-        parts.append(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="#333333" marker-end="url(#arrow)"/>')
+        color = e.get("color", "#333333")
+        marker = ' marker-end="url(#arrow)"' if e.get("arrow", True) else ""
+        parts.append(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{color}"{marker}/>')
         if e.get("label"):
             parts.append(f'<text x="{(x1 + x2) / 2}" y="{(y1 + y2) / 2 - 4}" font-size="12" '
-                         f'text-anchor="middle" fill="#333333">{html.escape(str(e["label"]))}</text>')
+                         f'text-anchor="middle" fill="{color}">{html.escape(str(e["label"]))}</text>')
     for n in nodes:
         x, y, w, h = n["x"], n["y"], n["w"], n["h"]
         _, svg_shape = SHAPES[n["shape"]]
+        fill = n.get("fill", "#ffffff")
+        stroke = n.get("stroke", "#333333")
         if svg_shape == "ellipse":
-            parts.append(f'<ellipse cx="{x + w / 2}" cy="{y + h / 2}" rx="{w / 2}" ry="{h / 2}" fill="#ffffff" stroke="#333333"/>')
+            parts.append(f'<ellipse cx="{x + w / 2}" cy="{y + h / 2}" rx="{w / 2}" ry="{h / 2}" fill="{fill}" stroke="{stroke}"/>')
         elif svg_shape == "diamond":
-            parts.append(f'<polygon points="{x + w / 2},{y} {x + w},{y + h / 2} {x + w / 2},{y + h} {x},{y + h / 2}" fill="#ffffff" stroke="#333333"/>')
+            parts.append(f'<polygon points="{x + w / 2},{y} {x + w},{y + h / 2} {x + w / 2},{y + h} {x},{y + h / 2}" fill="{fill}" stroke="{stroke}"/>')
+        elif svg_shape == "pie":
+            parts.append(f'<path d="{pie_path(n)}" fill="{fill}" stroke="{stroke}"/>')
+        elif svg_shape == "text":
+            pass  # label only, drawn below
         else:
             rx = 10 if n["shape"] == "rounded" else 0
-            parts.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{rx}" fill="#ffffff" stroke="#333333"/>')
-        parts.append(f'<text x="{x + w / 2}" y="{y + h / 2 + 4}" font-size="13" text-anchor="middle" '
-                     f'fill="#000000">{html.escape(str(n["label"]))}</text>')
+            parts.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{rx}" fill="{fill}" stroke="{stroke}"/>')
+        if str(n["label"]):
+            parts.append(svg_text(x + w / 2, y + h / 2, n["label"],
+                                  font_size=n.get("fontSize", 13),
+                                  color=n.get("fontColor", "#000000"),
+                                  bold=bool(n.get("bold"))))
     parts.append("</svg>")
     return "\n".join(parts)
 

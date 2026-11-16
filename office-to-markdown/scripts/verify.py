@@ -47,8 +47,14 @@ def main():
     media_dir = out / "media"
     media_files = [p.name for p in media_dir.iterdir()] if media_dir.exists() else []
     for fn in media_files:
-        if fn not in md:
-            problems.append(f"media file not referenced in markdown: {fn}")
+        if fn in md:
+            continue
+        # A converted figure counts as referenced: image1.png may be
+        # referenced through its redrawn form image1.drawio.svg.
+        stem = fn.rsplit(".", 1)[0]
+        if f"{stem}.drawio.svg" in md:
+            continue
+        problems.append(f"media file not referenced in markdown: {fn}")
 
     print(f"== checklist for {inv.get('source')} ({inv.get('type')}, engine: {inv.get('engine', 'n/a')}) ==")
     if inv["type"] == "pdf":
