@@ -18,10 +18,11 @@ Word（.docx）・Excel（.xlsx）・PDFをAIが読むためのスキルと、�
 1. **office-docs-reader** が機械的に、忠実に抽出します——`scripts/extract.py` が `extracted.md`、`inventory.json`、`media/`、`work/shapes.json` を生成。
    再構成はせず、黙って落とすこともなし。
    抽出できないもの（グラフ、SmartArt）は個数を数えて警告に記録します。
-2. **office-to-markdown** がその抽出物を受け取り、`references/conversion-rules.md` に従って再構成します（Excelのシート種別分類、図のdrawio.svg化かPNGかの判断、色・グレーアウトの意味の明示化など）。
+2. **office-to-markdown** がその抽出物を受け取り、`references/conversion-rules.md` に従って再構成します（Excelのシート種別分類、図の形式の決定、色・グレーアウトの意味の明示化など）。
    その後、`scripts/verify.py` で棚卸しと照合します。
 
-図の変換方針：箱・矢印・テキストの図は編集可能な **drawio.svg**（diagrams.net埋め込みSVG）に描き直すのが既定で、写真・スクリーンショット・高密度な図・データのグラフなど難しいものは **PNG** のままにします。
+図の変換方針：図の形式（**PNG** のままにするか、編集可能な **drawio.svg**（diagrams.net埋め込みSVG）に変換するか）は、ユーザーの指示に従います。
+ユーザーの指示がない場合は、勝手に決めず、変換前にユーザーへ確認します（写真・スクリーンショット・高密度な図・データのグラフは、描き直しで情報が落ちる恐れがあるためPNG推奨として提示します）。
 
 ## 構成
 
