@@ -101,11 +101,23 @@ def _wrap_md(text, bold=False, italic=False, strike=False, underline=False):
 
 
 def _is_colored(font):
+    """True for visually chromatic font colours.
+
+    Grayscale colours (black, white, grays such as the near-black body
+    text 262626 or white header text) are document design, not semantic
+    colour coding, so they are not counted.
+    """
     color = getattr(font, "color", None)
     if color is None or getattr(color, "type", None) != "rgb":
         return False
-    rgb = str(getattr(color, "rgb", "") or "")
-    return rgb not in ("", "FF000000")
+    rgb = str(getattr(color, "rgb", "") or "")[-6:]
+    if len(rgb) != 6:
+        return False
+    try:
+        r, g, b = (int(rgb[i:i + 2], 16) for i in (0, 2, 4))
+    except ValueError:
+        return False
+    return max(r, g, b) - min(r, g, b) > 16
 
 
 def cell_md(cell, counts):
@@ -176,12 +188,18 @@ def convert_xlsx(src, out):
         media_files = [n for n in names if n.startswith("xl/media/") and not n.endswith("/")]
         chart_files = [n for n in names if n.startswith("xl/charts/chart") and n.endswith(".xml")]
         media_bytes = {}
+        media_duplicates = []
         if media_files:
             media_dir.mkdir(parents=True, exist_ok=True)
             for n in media_files:
                 data = zf.read(n)
+                digest = hashlib.sha256(data).hexdigest()
+                if digest in media_bytes:
+                    # identical image embedded more than once: keep one file
+                    media_duplicates.append(Path(n).name)
+                    continue
                 (media_dir / Path(n).name).write_bytes(data)
-                media_bytes[hashlib.sha256(data).hexdigest()] = Path(n).name
+                media_bytes[digest] = Path(n).name
 
         try:
             wb = load_workbook(src, data_only=True, rich_text=True)
@@ -285,7 +303,9 @@ def convert_xlsx(src, out):
             warnings.append(f"{colored_total} cell(s) use font colour, which Markdown cannot "
                             "represent. They are counted per sheet in styled_cells; make the "
                             "meaning explicit (a note or a status column) when restructuring.")
-        inv["media_files"] = len(media_files)
+        inv["media_files"] = len(media_bytes)
+        if media_duplicates:
+            inv["media_duplicates"] = media_duplicates
         inv["charts"] = len(chart_files)
         if chart_files:
             warnings.append(f"{len(chart_files)} Excel chart object(s) found. Charts are not images: "

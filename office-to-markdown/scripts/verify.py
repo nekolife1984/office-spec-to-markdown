@@ -38,6 +38,7 @@ def main():
 
     problems = []
     links = re.findall(r"!\[[^\]]*\]\(([^)]+)\)", md)
+    links += re.findall(r'<img[^>]+src="([^"]+)"', md)
     for link in links:
         if link.startswith("http"):
             continue

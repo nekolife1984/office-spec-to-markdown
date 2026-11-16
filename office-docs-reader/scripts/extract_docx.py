@@ -110,10 +110,12 @@ def convert_docx(src, out):
     if shutil.which("pandoc"):
         media_dir.mkdir(parents=True, exist_ok=True)
         md_path = out / "extracted.md"
+        # Run with cwd=out and relative paths so image srcs in the
+        # Markdown stay portable ("media/..."), not absolute paths.
         subprocess.run(
-            ["pandoc", str(src), "-t", "gfm", "--wrap=none",
-             f"--extract-media={out}", "-o", str(md_path)],
-            check=True)
+            ["pandoc", str(src.resolve()), "-t", "gfm", "--wrap=none",
+             "--extract-media=.", "-o", "extracted.md"],
+            check=True, cwd=out)
         # pandoc puts images under <out>/media by default
         extracted = [p for p in out.rglob("*") if p.is_file() and p != md_path]
         inv.update({"engine": "pandoc", "media_files": len(extracted)})

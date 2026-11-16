@@ -9,7 +9,8 @@
 | シートごとの描画・コメントへのリンク | `xl/worksheets/_rels/sheetN.xml.rels` |
 | 図形・テキストボックス・吹き出し・画像（アンカーとテキスト） | `xl/drawings/drawingN.xml` — 図形は `xdr:sp`（`grpSp` 内のネストもあり）、テキストは `a:t`、位置はアンカーの `xdr:from` |
 | セルコメント | `xl/comments/commentN.xml`（フォルダ名は `xl/comments*` 側） |
-| 画像ファイル | `xl/media/*` |
+| 画像ファイル | `xl/media/*`。同一画像が複数回埋め込まれている場合は内容ハッシュで重複を除き、棚卸しの media_duplicates に記録する |
+| 文字色の数え方 | styled_cells の colored は「色相のある色」だけを数える。黒・白・グレー（本文の濃いグレーや見出しの白文字など）はデザインであって意味のある色付けではないため数えない |
 | グラフ | `xl/charts/chartN.xml` — オブジェクトであり画像ではない。描画して読む |
 | セル内画像 | セルの `vm` 属性 → `xl/metadata.xml` → `xl/richData/*` → `xl/media/*`（openpyxlは読み込まない） |
 
