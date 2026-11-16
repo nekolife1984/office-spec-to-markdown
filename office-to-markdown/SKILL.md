@@ -1,7 +1,7 @@
 ---
 name: office-to-markdown
 description: Word（.docx）とExcel（.xlsx）とPDFの文書、特に表・図形・テキストボックス・コメント・画像を含む仕様書・設計書を、構造化されたGit向きのMarkdown（GFM）に変換するスキル。.docx/.xlsx/.pdfを.mdファイルにしたいとき、docs-as-code／Git管理へ移行したいとき、読者とAIのために再構成したいときに使う。office-docs-reader スキルの抽出物（extracted.md＋inventory.json＋media/）を入力として、明示的な変換ルールで再構成し、結果を個数で検証する。Office文書を読む・要約するだけならこのスキルではなく office-docs-reader の仕事である。
-argument-hint: "[変換したい .docx / .xlsx / .pdf ファイル、または抽出ディレクトリのパス]"
+argument-hint: "[変換したいファイルのパス] [出力先（任意）] [作業フォルダ（任意）] [画像形式：PNG / SVG / 未指定なら確認]"
 ---
 
 # Office文書 → Markdown変換
@@ -14,6 +14,18 @@ Office文書を、Gitで人間が気持ちよく保守できるMarkdownにする
 抽出は **office-docs-reader**スキルの仕事であり、このスキルはその出力から始める。
 再構成とは、元の表やレイアウトの形を維持することではない。
 内容を理解し、漏れなく、仕様書の文書として組み立て直すことである（基本方針は`references/conversion-rules.md`）。
+
+## 引数
+
+呼び出し時に次を受け取る。
+
+- **対象ファイル**（必須）：変換したい.docx／.xlsx／.pdf、またはoffice-docs-readerの抽出ディレクトリ。
+- **出力先**（任意）：最終Markdownの出力先。
+  省略した場合は、抽出ディレクトリに `<stem>.md` として書く。
+- **作業フォルダ**（任意）：抽出物（`extracted.md`、`inventory.json`、`media/`）を置くフォルダ。
+  省略した場合は、出力先と同じフォルダを使う。
+- **画像形式**（任意）：PNGのままにするか、drawio.svg（SVG）に変換するか。
+  指定がない場合は、勝手に決めず変換前にユーザーへ確認する（変換ルール3）。
 
 ## 入力
 
