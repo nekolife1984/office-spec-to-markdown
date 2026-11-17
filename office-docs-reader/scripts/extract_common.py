@@ -56,7 +56,33 @@ def run_extraction(convert, suffixes):
     finish(inv, out)
 
 
+METAFILE_SUFFIXES = {".emf", ".wmf"}
+
+
+def note_metafiles(inv, out):
+    """Record EMF/WMF images in the inventory.
+
+    Browsers and Markdown renderers cannot display EMF/WMF, so a metafile
+    that passes extraction silently would produce a broken figure in the
+    converted Markdown. Flag them here; the conversion step turns them
+    into SVG (or PNG) with office-to-markdown's convert_metafiles.py.
+    """
+    media_dir = out / "media"
+    if not media_dir.exists():
+        return
+    metafiles = sorted(p.name for p in media_dir.iterdir()
+                       if p.suffix.lower() in METAFILE_SUFFIXES)
+    if not metafiles:
+        return
+    inv["metafiles"] = metafiles
+    inv.setdefault("warnings", []).append(
+        f"{len(metafiles)} metafile image(s) (EMF/WMF) cannot be displayed "
+        "by browsers or Markdown renderers: " + ", ".join(metafiles) +
+        ". Convert them to SVG/PNG during the conversion step.")
+
+
 def finish(inv, out):
+    note_metafiles(inv, out)
     (out / "inventory.json").write_text(
         json.dumps(inv, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(inv, ensure_ascii=False, indent=2))

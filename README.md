@@ -42,6 +42,7 @@ office-to-markdown/
   SKILL.md
   scripts/verify.py                 inventory.jsonとのリンク・個数検証
   scripts/make_drawio_svg.py        JSONの図仕様から編集可能な.drawio.svgを生成
+  scripts/convert_metafiles.py      EMF/WMFの図をSVG（失敗時はPNG）へ変換（LibreOffice使用）
   references/conversion-rules.md    共通の変換ルール＋検証チェックリスト
   references/conversion-{docx,xlsx,pdf}.md  形式ごとの変換ルール
   templates/convert-spec.prompt.md  GitHub Copilot用プロンプトファイル（.github/prompts/）

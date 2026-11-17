@@ -63,6 +63,9 @@ office-docs-readerが生成した抽出ディレクトリ：
   写真、スクリーンショット、高密度・複雑な図、データのグラフなど、描き直すと情報が落ちたり捏造になったりするものは、PNGのままを推奨として提示する。
   drawio.svg化する場合は、単純なノード／矢印の図には`scripts/make_drawio_svg.py` を使い、リッチな図は.drawioソースを作成してdiagrams.netからSVGにエクスポートする。
   PNGのままにする場合は、参照＋テキスト説明を付ける。
+- **EMF／WMFの図はそのままでは表示できない**：ブラウザもMarkdownビューアもEMF／WMFを表示できないため、棚卸しに `metafiles` がある場合は、形式の確認とは別に、まず `scripts/convert_metafiles.py` でSVG化する（ベクターのまま表示できる形にする変換で、LibreOfficeが必要）。
+  SVG化できないものはPNG化される。
+  drawio.svgへの描き直しに進むかどうかは、他の図と同じくユーザーの指示か確認で決める。
 
 ### 3. 再構成する
 

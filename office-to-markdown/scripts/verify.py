@@ -42,6 +42,10 @@ def main():
     for link in links:
         if link.startswith("http"):
             continue
+        if link.lower().endswith((".emf", ".wmf")):
+            problems.append(f"metafile referenced in markdown (browsers cannot "
+                            f"display EMF/WMF; convert to SVG/PNG): {link}")
+            continue
         if not (out / link).exists():
             problems.append(f"broken image link: {link}")
     media_dir = out / "media"
@@ -50,9 +54,11 @@ def main():
         if fn in md:
             continue
         # A converted figure counts as referenced: image1.png may be
-        # referenced through its redrawn form image1.drawio.svg.
+        # referenced through its redrawn form image1.drawio.svg, and a
+        # metafile image1.emf through its converted image1.svg/.png.
         stem = fn.rsplit(".", 1)[0]
-        if f"{stem}.drawio.svg" in md:
+        if any(f"{stem}{ext}" in md for ext in
+               (".drawio.svg", ".svg", ".png", ".jpg", ".jpeg")):
             continue
         problems.append(f"media file not referenced in markdown: {fn}")
 
